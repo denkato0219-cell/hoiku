@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>保育士試験ルーティン</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="保育士ルーティン">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2A66D4">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: one-column phone app. Now card on top, today's time slots and plan below, bottom tab bar (今日 / 記録 / 設定). */
+:root{
+  --bg:#EEF3F7; --surface:#FFFFFF; --sunk:#E3EAF1; --ink:#1B2838; --muted:#5A6A7D; --line:#D6DFE8;
+  --study:#2A66D4; --study-soft:#DCE7FB; --rest:#228F68; --rest-soft:#D6F1E6;
+  --accent:#E8A817; --accent-soft:#FCF0D2; --bad:#C8463F; --good:#228F68;
+  --display:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif;
+  --body:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+  --r:16px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#10161E; --surface:#18202B; --sunk:#222C39; --ink:#E7EDF4; --muted:#93A2B4; --line:#2A3544;
+  --study:#6E9CFF; --study-soft:#1F2D4A; --rest:#4CC596; --rest-soft:#173A2F;
+  --accent:#F3C04A; --accent-soft:#3A3018; --bad:#F07A72; --good:#4CC596; color-scheme:dark}}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+html{padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;margin:0;-webkit-text-size-adjust:100%}
+.wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:14px 120px;display:flex;flex-direction:column;gap:16px}
+section{display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.3}
+h2{font-size:17px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:8px}
+.num{font-variant-numeric:tabular-nums}
+p{margin:0}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+header.top h1{font-size:19px;font-weight:900}
+.countdown{font-family:var(--display);font-weight:700;font-size:13px;background:var(--accent-soft);color:var(--ink);padding:6px 12px;border-radius:999px;white-space:nowrap;border:0}
+.countdown b{font-size:18px;color:var(--accent);margin-inline:2px}
+
+.card{background:var(--surface);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.hint{font-size:12px;color:var(--muted)}
+.btn{border:0;border-radius:999px;padding:12px 22px;font-weight:700;font-family:var(--display);font-size:16px;background:var(--sunk);text-align:center;text-decoration:none;color:inherit;display:inline-block}
+.btn.primary{background:var(--study);color:#fff}
+.btn.dark{background:var(--ink);color:var(--surface)}
+.btn.small{padding:7px 14px;font-size:13px}
+.btn.ghost{background:none;border:1px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+
+/* now card */
+.now{align-items:center;text-align:center;gap:6px;padding-block:20px}
+.now[data-kind="focus"]{background:linear-gradient(180deg,var(--study-soft),var(--surface) 70%)}
+.now[data-kind="break"]{background:linear-gradient(180deg,var(--rest-soft),var(--surface) 70%)}
+.pill{font-family:var(--display);font-weight:700;font-size:13px;padding:4px 12px;border-radius:999px;color:#fff;background:var(--study)}
+.now[data-kind="break"] .pill{background:var(--rest)}
+.now[data-kind="wait"] .pill,.now[data-kind="none"] .pill{background:var(--muted)}
+.now[data-kind="done"] .pill{background:var(--accent);color:#1B2838}
+.dial{position:relative;width:min(220px,62vw);aspect-ratio:1;max-width:100%;margin-block:4px}
+.dial svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dial .track{stroke:var(--sunk)}
+.dial .prog{stroke:var(--study);transition:stroke-dashoffset .5s linear}
+.now[data-kind="break"] .dial .prog{stroke:var(--rest)}
+.now[data-kind="wait"] .dial .prog,.now[data-kind="none"] .dial .prog{stroke:var(--muted)}
+.dial .inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.clock{font-family:var(--display);font-weight:900;font-size:clamp(40px,13vw,54px);line-height:1}
+.dial .sub{font-size:13px;color:var(--muted)}
+.task-title{font-family:var(--display);font-size:20px;font-weight:900}
+.task-subject{font-size:14px;color:var(--muted)}
+.tip{font-size:14px;background:var(--sunk);border-radius:12px;padding:10px 14px;text-align:left;width:100%}
+.links{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.links a{font-size:13px;color:var(--study);font-weight:700;text-decoration:none;border:1px solid var(--line);padding:4px 12px;border-radius:999px;background:var(--surface)}
+
+/* score */
+.score{background:var(--accent-soft);border-color:transparent}
+.score-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.score input{width:72px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);text-align:center;font-size:18px;font-weight:700}
+
+/* windows */
+.win{display:grid;grid-template-columns:1fr auto 1fr auto;gap:8px;align-items:center}
+.win input{padding:9px 8px;border-radius:10px;border:1px solid var(--line);background:var(--surface);min-width:0;width:100%;font-size:16px;text-align:center}
+.win .x{border:0;background:var(--sunk);width:36px;height:36px;border-radius:50%;font-size:18px;line-height:1;color:var(--muted)}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.status{font-size:13px;padding:8px 12px;border-radius:10px;background:var(--sunk)}
+.status.ok{background:var(--rest-soft)}
+.status.warn{background:var(--accent-soft)}
+.status.err{background:color-mix(in srgb,var(--bad) 18%,var(--surface))}
+
+/* proposal */
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.summary div{background:var(--sunk);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;min-width:0}
+.summary b{font-family:var(--display);font-size:20px;font-weight:900;line-height:1.2}
+.summary span{font-size:11px;color:var(--muted)}
+.why{font-size:13px;display:flex;flex-direction:column;gap:4px;margin:0;padding-left:1.2em}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl li{display:grid;grid-template-columns:48px 14px 1fr auto;align-items:center;gap:10px;padding-block:7px;border-bottom:1px dashed var(--line);font-size:14px}
+.tl li:last-child{border-bottom:0}
+.tl .t{color:var(--muted);font-size:13px}
+.tl .dot{width:12px;height:12px;border-radius:50%;background:var(--study)}
+.tl li.b .dot{background:var(--rest);transform:scale(.7)}
+.tl li.r .dot{background:var(--study);opacity:.5}
+.tl li.end .dot{background:var(--accent)}
+.tl li .what{min-width:0}
+.tl li .what small{color:var(--muted);display:block;font-size:12px;line-height:1.35}
+.tl li .m{color:var(--muted);font-size:12px}
+.tl li.done{opacity:.45}
+.tl li.cur{background:var(--study-soft);border-radius:10px;padding-inline:6px;border-bottom-color:transparent}
+.tl li.b.cur{background:var(--rest-soft)}
+.tl li.sep{display:block;border-bottom:0;padding-top:12px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+
+/* stats */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi b{font-family:var(--display);font-size:24px;font-weight:900;line-height:1.1}
+.kpi span{font-size:11px;color:var(--muted)}
+.prog-bar{height:12px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.prog-bar i{display:block;height:100%;background:var(--study);border-radius:6px}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:130px;padding-top:16px}
+.bar{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.bar i{display:block;width:100%;max-width:30px;background:var(--study);border-radius:6px 6px 2px 2px;min-height:2px}
+.bar.today i{background:var(--accent)}
+.bar em{font-style:normal;font-size:11px;color:var(--muted)}
+.bar small{font-size:10px;color:var(--muted)}
+.subj{display:flex;flex-direction:column;gap:12px}
+.srow{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:14px}
+.srow .meter{grid-column:1/-1;position:relative;height:10px;background:var(--sunk);border-radius:6px}
+.srow .meter i{position:absolute;inset:0 auto 0 0;border-radius:6px;background:var(--bad)}
+.srow .meter i.ok{background:var(--good)}
+.srow .meter .line{position:absolute;left:60%;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.6}
+.srow .meta{font-size:12px;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:16px 8px}
+.log{list-style:none;margin:0;padding:0;font-size:13px}
+.log li{display:flex;justify-content:space-between;gap:10px;padding-block:6px;border-bottom:1px solid var(--line)}
+.log li:last-child{border-bottom:0}
+
+/* settings */
+.form{display:grid;grid-template-columns:1fr auto;gap:12px 14px;align-items:center}
+.form label{font-size:14px}
+.form input,.form select{padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);min-width:0;font-size:16px}
+.form input[type=number]{width:96px;text-align:right}
+.form input[type=checkbox]{width:22px;height:22px;accent-color:var(--study)}
+.topic{font-family:ui-monospace,Menlo,monospace;font-size:15px;font-weight:700;background:var(--sunk);padding:10px 12px;border-radius:10px;word-break:break-all;user-select:all;-webkit-user-select:all}
+.steps{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.guide{font-size:14px;display:flex;flex-direction:column;gap:10px}
+.guide table{border-collapse:collapse;width:100%;font-size:13px}
+.guide td,.guide th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+.guide th{color:var(--muted);font-weight:500;white-space:nowrap}
+.mine{background:var(--study-soft);border-radius:12px;padding:12px 14px;font-size:14px}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav.tabs .in{display:grid;grid-template-columns:repeat(3,1fr);max-width:560px;width:100%}
+nav.tabs button{border:0;background:none;padding:10px 0 12px;font-family:var(--display);font-weight:700;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-selected="true"]{color:var(--study)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:999px;font-size:14px;z-index:6;max-width:calc(100% - 32px);text-align:center}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>保育士試験ルーティン</h1>
+    <button class="countdown" id="countdown" type="button">試験日を設定</button>
+  </header>
+
+  <!-- ============ 今日 ============ -->
+  <section id="view-today">
+    <div class="card status warn" id="setupNag" hidden>
+      <b>通知がまだ設定されていません</b>
+      <p style="font-size:13px">設定タブで ntfy の購読とテスト通知を済ませてください（1分で終わります）。</p>
+      <button class="btn small dark" type="button" data-goto="settings" style="align-self:flex-start">設定する</button>
+    </div>
+
+    <div class="card now" id="now" data-kind="none">
+      <span class="pill" id="pill">予定なし</span>
+      <div class="dial">
+        <svg viewBox="0 0 240 240" aria-hidden="true">
+          <circle class="track" cx="120" cy="120" r="108" fill="none" stroke-width="12"/>
+          <circle class="prog" id="prog" cx="120" cy="120" r="108" fill="none" stroke-width="12" stroke-linecap="round" stroke-dasharray="678.58" stroke-dashoffset="678.58"/>
+        </svg>
+        <div class="inner">
+          <div class="clock num" id="clock">--:--</div>
+          <div class="sub num" id="clockSub"></div>
+        </div>
+      </div>
+      <div class="task-title" id="taskTitle">今日の予定を作りましょう</div>
+      <div class="task-subject" id="taskSubject">下で学習できる時間を入れて「通知を予約」を押します</div>
+      <div class="tip" id="tip" hidden></div>
+      <div class="links" id="links"></div>
+    </div>
+
+    <div class="card score" id="scoreCard" hidden>
+      <h2 id="scoreTitle">過去問の結果を記録</h2>
+      <div class="score-row">
+        <input id="scoreOk" type="number" inputmode="numeric" min="0" value="0" aria-label="正解数">
+        <span>問正解 ／</span>
+        <input id="scoreAll" type="number" inputmode="numeric" min="1" value="20" aria-label="解いた問題数">
+        <span>問中</span>
+      </div>
+      <div class="btns">
+        <button class="btn small dark" id="scoreSave" type="button">記録する</button>
+        <button class="btn small ghost" id="scoreSkip" type="button">記録しない</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row"><h2>今日学習できる時間</h2><span class="hint" id="dowHint"></span></div>
+      <div id="windows" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="presets">
+        <button class="btn small ghost" type="button" id="addWin">＋ 時間帯を追加</button>
+        <button class="btn small ghost" type="button" data-preset="weekday">平日夜</button>
+        <button class="btn small ghost" type="button" data-preset="holiday">休日</button>
+        <button class="btn small ghost" type="button" data-preset="short">スキマ30分</button>
+      </div>
+      <div class="row" style="margin-top:4px"><h2 style="font-size:15px">科目</h2><span class="hint">選ばなければおまかせ（弱点・久しぶりの科目を優先）</span></div>
+      <div class="chips" id="subjectChips"></div>
+      <div class="btns" style="margin-top:4px">
+        <button class="btn primary" id="btnSchedule" type="button">この予定で通知を予約</button>
+        <button class="btn ghost" id="btnCancel" type="button" hidden>今日はここまで</button>
+      </div>
+      <div class="status" id="schedStatus" hidden></div>
+    </div>
+
+    <div class="card">
+      <div class="row"><h2 id="planHeading">今日の提案</h2><span class="hint" id="planBadge"></span></div>
+      <div class="summary">
+        <div><span>学習</span><b class="num" id="sumStudy">0分</b></div>
+        <div><span>休憩</span><b class="num" id="sumBreak">0分</b></div>
+        <div><span>集中ブロック</span><b class="num" id="sumBlocks">0</b></div>
+      </div>
+      <ul class="why" id="why"></ul>
+      <ol class="tl" id="timeline"></ol>
+    </div>
+  </section>
+
+  <!-- ============ 記録 ============ -->
+  <section id="view-stats" hidden>
+    <div class="kpis">
+      <div class="kpi"><span>今週</span><b class="num" id="kWeek">0h</b></div>
+      <div class="kpi"><span>連続学習</span><b class="num" id="kStreak">0日</b></div>
+      <div class="kpi"><span>累計（アプリ記録）</span><b class="num" id="kTotal">0h</b></div>
+    </div>
+    <div class="card">
+      <div class="row"><h2>合格までの目標時間</h2><span class="hint num" id="goalText"></span></div>
+      <div class="prog-bar"><i id="goalBar" style="width:0%"></i></div>
+      <p class="hint" id="goalPace"></p>
+    </div>
+    <div class="card">
+      <h2>直近7日の学習時間</h2>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div class="card">
+      <h2>科目別の正答率</h2>
+      <p class="hint">縦線が合格ライン（各科目6割）。過去問ブロックの後に入力した結果から計算します。</p>
+      <div class="subj" id="subjStats"></div>
+    </div>
+    <div class="card">
+      <h2>最近の記録</h2>
+      <ul class="log" id="logList"></ul>
+    </div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section id="view-settings" hidden>
+    <div class="card">
+      <h2>通知（ntfy）</h2>
+      <ol class="steps">
+        <li>ntfy アプリを開いて右上の「＋」をタップ</li>
+        <li>Topic に下の名前を貼り付けて「Subscribe」（サーバーは ntfy.sh のまま）</li>
+        <li>「テスト通知を送る」を押して、ロック画面に届くか確認</li>
+      </ol>
+      <div class="topic" id="topic"></div>
+      <div class="btns">
+        <button class="btn small dark" id="copyTopic" type="button">名前をコピー</button>
+        <button class="btn small primary" id="testNotify" type="button">テスト通知を送る</button>
+      </div>
+      <div class="status" id="testStatus" hidden></div>
+      <p class="hint">トピック名を知っている人は通知を読めるので、推測されにくい名前を自動で作っています。iPhoneの「設定 → 通知 → ntfy」でサウンドをオンにし、集中モードを使う場合は ntfy を許可してください。</p>
+      <div class="form">
+        <label for="sPre">開始5分前にも知らせる</label><input id="sPre" type="checkbox" checked>
+        <label for="sSound">アプリを開いているときもチャイム</label><input id="sSound" type="checkbox">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>目標</h2>
+      <div class="form">
+        <label for="sExam">試験日</label><input id="sExam" type="date">
+        <label for="sTarget">合格までの目標時間（時間）</label><input id="sTarget" type="number" min="50" max="2000" step="10" value="400">
+        <label for="sPrior">アプリを使う前の学習時間（だいたい）</label><input id="sPrior" type="number" min="0" max="2000" step="5" value="0">
+        <label for="sStyle">集中の長さ</label>
+        <select id="sStyle"><option value="auto">おまかせ</option><option value="pomo">いつも25分</option><option value="deep">いつも50分</option></select>
+      </div>
+    </div>
+
+    <div class="card guide">
+      <h2>どのくらい勉強すればいい？</h2>
+      <div class="mine" id="myPace"></div>
+      <table>
+        <tr><th>合格まで</th><td>独学で300〜600時間、期間で半年〜1年がよく言われる目安です。初学者は400時間前後を目標にすると計画が立てやすくなります。</td></tr>
+        <tr><th>1日の目安</th><td>平日1〜2時間、休日3〜4時間。毎日少しでも触れるほうが、週末にまとめてやるより定着します。</td></tr>
+        <tr><th>1日の上限</th><td>6時間。それ以上は集中が落ちやすいので、このアプリは6時間で打ち切ります。</td></tr>
+      </table>
+      <h2 style="font-size:15px">時間に合わせた組み方（おまかせ時）</h2>
+      <table>
+        <tr><th>1時間未満</th><td>20〜30分を1〜2本。思い出す練習が一番効くので、過去問.comを優先します（初めての科目だけ動画から）。</td></tr>
+        <tr><th>1〜3時間</th><td>25分集中＋5分休憩。4本ごとに15分休憩（ポモドーロ）。</td></tr>
+        <tr><th>3時間以上</th><td>50分集中＋10分休憩。2本ごとに20分休憩。1本の中で「動画→テキスト」「過去問.com→過去問テキスト」をまとめて行います。</td></tr>
+        <tr><th>最初と最後</th><td>最初の5〜10分は前回の×・★の解き直し。最後に半端な時間が残ったら、その日の間違いノートの見返しに使います。</td></tr>
+      </table>
+      <h2 style="font-size:15px">時期ごとのバランス</h2>
+      <table>
+        <tr><th>試験まで3か月以上</th><td>インプット多め：動画 → テキスト → 過去問.com → 過去問テキスト</td></tr>
+        <tr><th>1〜3か月</th><td>アウトプット多め：テキスト → 過去問.com → 過去問テキスト → 過去問.com</td></tr>
+        <tr><th>1か月を切ったら</th><td>過去問中心。初めて手をつける科目だけ動画から入ります。</td></tr>
+      </table>
+      <h2 style="font-size:15px">科目の選び方（おまかせ時）</h2>
+      <p>正答率が6割未満の科目、しばらく触れていない科目、まだ手をつけていない科目ほど先に入ります。保育士試験は全科目6割以上で合格なので、苦手を残さないことを優先しています。</p>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="画面切り替え">
+  <div class="in">
+    <button role="tab" aria-selected="true" data-view="today" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>今日</button>
+    <button role="tab" aria-selected="false" data-view="stats" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>記録</button>
+    <button role="tab" aria-selected="false" data-view="settings" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>設定</button>
+  </div>
+</nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const MIN = 60000, DAILY_CAP = 360;
+
+const SUBJECTS = [
+  {id:"genri", name:"保育原理", q:20},
+  {id:"kyoiku", name:"教育原理", q:10},
+  {id:"yougo", name:"社会的養護", q:10},
+  {id:"kodomo", name:"子ども家庭福祉", q:20},
+  {id:"fukushi", name:"社会福祉", q:20},
+  {id:"shinri", name:"保育の心理学", q:20},
+  {id:"hoken", name:"子どもの保健", q:20},
+  {id:"eiyo", name:"子どもの食と栄養", q:20},
+  {id:"jisshu", name:"保育実習理論", q:20},
+];
+const subjById = Object.fromEntries(SUBJECTS.map(s => [s.id, s]));
+const subjName = (id, act) => id ? subjById[id].name : act === "matome" ? "今日の間違いノート" : "前回の×・★";
+
+const hoipiyoLink = s => ["ほいピヨをYouTubeで探す", "https://www.youtube.com/results?search_query=" + encodeURIComponent("ほいピヨ " + s)];
+const kakoLink = () => ["過去問.comを開く", "https://www.kakomonn.com/"];
+const ACT = {
+  warmup:  {title:"ウォームアップ復習", tag:"復習", tip:"前回×や★をつけた問題だけを解き直します。答えを見る前に、まず自力で思い出してください。"},
+  hoipiyo: {title:"ほいピヨ動画", tag:"インプット", tip:"1.25〜1.5倍速で1テーマを視聴。見終わったら画面を伏せて、覚えたことを3行で書き出します。", link:hoipiyoLink},
+  text:    {title:"テキスト精読", tag:"理解", tip:"動画と同じ範囲を読みます。人物名・年号・法律名に印をつけ、1ページごとに隠して言えるか確認します。"},
+  kakocom: {title:"過去問.com", tag:"アウトプット", score:true, tip:"同じ科目を1問ずつ解きます。正解しても解説は読む。迷った問題には★をつけておきます。", link:kakoLink},
+  kakotext:{title:"過去問テキスト", tag:"弱点補強", score:true, tip:"1年度分を通しで解いて時間感覚をつかみます。×の問題は間違いノートへ。なぜ間違えたかを1行で書きます。"},
+  inputMix:{title:"動画＋テキスト", tag:"インプット", tip:"最初の20分でほいピヨ動画（1.5倍速）、残りで同じ範囲をテキストで確認。最後に何も見ずに3行要約します。", link:hoipiyoLink},
+  outputMix:{title:"過去問.com＋過去問テキスト", tag:"アウトプット", score:true, tip:"過去問.comで1問ずつ解き、間違えた分野を過去問テキストで確認。×の問題は間違いノートへ。", link:kakoLink},
+  matome:  {title:"今日のまとめ", tag:"定着", tip:"今日の間違いノートと★の問題をざっと見返します。寝る前の見直しは記憶に残りやすくなります。"},
+};
+const BREAK_TIPS = ["立ち上がって水を一杯。SNSは開かずに目を休めます。", "肩を回して深呼吸を3回。さっき学んだことを1つだけ思い出してみましょう。", "窓の外の遠くを見て目を休めます。"];
+const LONG_TIP = "長めの休憩です。軽く体を動かしたり、おやつを食べたりしてしっかり休みましょう。";
+const STYLES = {
+  short:{focus:20, brk:5, longBrk:5, every:99, label:"短時間"},
+  pomo: {focus:25, brk:5, longBrk:15, every:4, label:"25分集中"},
+  deep: {focus:50, brk:10, longBrk:20, every:2, label:"50分集中"},
+};
+
+/* ---------------- storage ---------------- */
+const ls = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+};
+const randTopic = () => "hoiku-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
+const DEFAULTS = {topic:"", tested:false, pre:true, sound:false, exam:"", target:400, prior:0, style:"auto", pinned:[],
+  winByDow:{}, };
+let settings = Object.assign({}, DEFAULTS, ls.get("hr2.settings", {}));
+if(!settings.topic){ settings.topic = randTopic(); }
+let logs = ls.get("hr2.logs", []);
+let plan = ls.get("hr2.plan", null);         // today's scheduled plan
+let sent = ls.get("hr2.sent", []);           // [{sid, at}] scheduled ntfy messages
+const saveSettings = () => ls.set("hr2.settings", settings);
+const savePlan = () => ls.set("hr2.plan", plan);
+const saveSent = () => ls.set("hr2.sent", sent);
+saveSettings();
+
+/* ---------------- time helpers ---------------- */
+const pad = n => String(n).padStart(2, "0");
+const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const hhmm = t => { const d = new Date(t); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+const atToday = s => { const [h, m] = s.split(":").map(Number); const d = new Date(); d.setHours(h, m, 0, 0); return d.getTime(); };
+const fmtLeft = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return h ? h + ":" + pad(m) + ":" + pad(ss) : pad(m) + ":" + pad(ss); };
+const hm = m => m >= 60 ? Math.floor(m / 60) + "時間" + (m % 60 ? m % 60 + "分" : "") : m + "分";
+const hShort = m => m >= 60 ? (m / 60).toFixed(1).replace(/\.0$/, "") + "h" : m + "分";
+const uid = () => Math.random().toString(36).slice(2, 10);
+if(plan && plan.day !== dayKey(new Date())) { plan = null; savePlan(); }
+
+function daysToExam(){
+  if(!settings.exam) return null;
+  const [y, m, d] = settings.exam.split("-").map(Number);
+  return Math.round((new Date(y, m - 1, d) - new Date(new Date().setHours(0,0,0,0))) / 86400000);
+}
+function stage(){
+  const d = daysToExam();
+  if(d == null || d > 90) return "early";
+  if(d > 30) return "mid";
+  return "late";
+}
+const STAGE_LABEL = {early:"基礎固め期（インプット多め）", mid:"実践期（アウトプット多め）", late:"仕上げ期（過去問中心）"};
+
+/* ---------------- today's windows ---------------- */
+const isWeekend = () => [0, 6].includes(new Date().getDay());
+const PRESETS = {
+  weekday:[["20:00","22:00"]],
+  holiday:[["09:30","12:00"],["14:00","17:00"]],
+  short:  [null],
+};
+let windows = settings.winByDow[new Date().getDay()] || (isWeekend() ? PRESETS.holiday : PRESETS.weekday);
+windows = windows.map(w => w.slice());
+function saveWindows(){ settings.winByDow[new Date().getDay()] = windows; saveSettings(); }
+
+/* ---------------- subject ranking ---------------- */
+function subjectStats(){
+  const st = Object.fromEntries(SUBJECTS.map(s => [s.id, {minutes:0, input:0, ok:0, total:0, last:0}]));
+  logs.forEach(l => { const s = st[l.subject]; if(!s) return;
+    if(l.type === "study"){ s.minutes += l.minutes; s.last = Math.max(s.last, l.ts); if(["hoipiyo","text","inputMix"].includes(l.act)) s.input += l.minutes; }
+    if(l.type === "score"){ s.ok += l.ok; s.total += l.total; } });
+  return st;
+}
+function ranked(){
+  const st = subjectStats(), now = Date.now();
+  return SUBJECTS.map(s => {
+    const v = st[s.id], acc = v.total >= 5 ? v.ok / v.total : null;
+    const days = v.last ? Math.floor((now - v.last) / 86400000) : null;
+    // weak (<60%) first, then untouched, then long-unvisited
+    let score = (acc != null && acc < 0.6 ? 3 + (0.6 - acc) * 5 : acc != null ? (1 - acc) : 0) + (v.minutes === 0 ? 2 : 0) + (days == null ? 0 : Math.min(days, 14) / 14 * 1.5);
+    let reason;
+    if(acc != null && acc < 0.6) reason = "正答率" + Math.round(acc * 100) + "%で合格ライン未満";
+    else if(v.minutes === 0) reason = "まだ手をつけていない";
+    else if(days != null && days >= 4) reason = days + "日間あいている";
+    else reason = "全科目を順に回すため";
+    return {id:s.id, score, reason, fresh:v.input < 30, acc};
+  }).sort((a, b) => b.score - a.score);
+}
+
+/* ---------------- planner ---------------- */
+function unitPattern(style, st, fresh){
+  if(style === "short") return fresh ? ["hoipiyo", "text"] : ["kakocom", "kakotext"];
+  if(style === "deep"){
+    if(fresh) return ["inputMix", "outputMix"];
+    return st === "late" ? ["outputMix", "outputMix"] : ["inputMix", "outputMix"];
+  }
+  if(fresh) return st === "late" ? ["hoipiyo", "kakocom", "text", "kakocom"] : ["hoipiyo", "text", "kakocom", "kakotext"];
+  if(st === "early") return ["hoipiyo", "text", "kakocom", "kakotext"];
+  if(st === "mid") return ["text", "kakocom", "kakotext", "kakocom"];
+  return ["kakocom", "kakotext", "kakocom", "kakotext"];
+}
+const INPUT_ACTS = ["hoipiyo", "text", "inputMix"];
+function convertQueue(q, style){
+  if(!q.length) return q;
+  const out = [];
+  q.forEach(x => {
+    const isIn = INPUT_ACTS.includes(x.act);
+    if(style === "deep"){
+      const a = isIn ? "inputMix" : "outputMix";
+      if(!out.length || out[out.length - 1].act !== a) out.push({act:a, subject:x.subject});
+    } else if(x.act === "inputMix") out.push({act:"hoipiyo", subject:x.subject}, {act:"text", subject:x.subject});
+    else if(x.act === "outputMix") out.push({act:"kakocom", subject:x.subject}, {act:"kakotext", subject:x.subject});
+    else out.push(x);
+  });
+  return out;
+}
+function pickStyle(avail){
+  if(settings.style !== "auto" && avail >= 45) return settings.style;
+  if(avail < 60) return "short";
+  if(avail <= 180) return "pomo";
+  return "deep";
+}
+/* Build a plan for the given windows starting no earlier than `from`.
+   keep: items already finished (kept when re-planning). */
+function buildPlan(from, keep){
+  const st = stage();
+  const order = settings.pinned.length ? settings.pinned.map(id => ({id, reason:"あなたが選んだ科目", fresh:subjectStats()[id].input < 30})) : ranked();
+  const ctx = {study: keep.filter(i => i.kind === "focus").reduce((a, i) => a + i.min, 0), subjIdx:0, warmed:keep.some(i => i.act === "warmup"), capped:false, styles:[], queue:[]};
+  const items = keep.slice();
+  let blockNo = keep.filter(i => i.kind === "focus" && i.act !== "warmup").length;
+  const ws = windows.filter(w => w && w[0] && w[1]).map(w => [atToday(w[0]), atToday(w[1])]).filter(w => w[1] > w[0]).sort((a, b) => a[0] - b[0]);
+  ws.forEach((w, wi) => {
+    let t = Math.max(w[0], from), end = w[1];
+    const avail = Math.floor((end - t) / MIN);
+    if(avail < 15 || ctx.capped) return;
+    const styleKey = pickStyle(avail), S = STYLES[styleKey];
+    ctx.styles.push(styleKey);
+    const winId = "w" + wi;
+    const add = (o, min) => { items.push(Object.assign({uid:uid(), win:winId, start:t, end:t + min * MIN, min}, o)); t += min * MIN; };
+    ctx.queue = convertQueue(ctx.queue, styleKey);
+    const nextAct = () => {
+      if(!ctx.queue.length){
+        const s = order[ctx.subjIdx % order.length]; ctx.subjIdx++;
+        ctx.queue = unitPattern(styleKey, st, s.fresh).map(a => ({act:a, subject:s.id}));
+      }
+      return ctx.queue.shift();
+    };
+    if(!ctx.warmed && avail >= 45){ const wm = styleKey === "deep" ? 10 : 5; add({kind:"focus", act:"warmup", subject:null}, wm); ctx.warmed = true; ctx.study += wm; }
+    if(styleKey === "short" && avail < 45){
+      const m = Math.min(avail, 40);
+      add(Object.assign({kind:"focus", n:++blockNo}, nextAct()), m); ctx.study += m; return;
+    }
+    let n = 0;
+    while(true){
+      if(ctx.study >= DAILY_CAP){ ctx.capped = true; break; }
+      const left = Math.floor((end - t) / MIN);
+      const F = Math.min(S.focus, DAILY_CAP - ctx.study);
+      if(left >= F && F >= 15){
+        add(Object.assign({kind:"focus", n:++blockNo}, nextAct()), F); n++; ctx.study += F;
+        const left2 = Math.floor((end - t) / MIN);
+        // a long break only when a full block still follows it
+        const long = n % S.every === 0 && left2 - S.longBrk >= F, brk = long ? S.longBrk : S.brk;
+        if(left2 >= brk + 15 && ctx.study < DAILY_CAP) add({kind:"break", long, tip: long ? LONG_TIP : BREAK_TIPS[n % BREAK_TIPS.length]}, brk);
+        else break;
+      } else if(left >= 15){
+        const m = Math.min(left, DAILY_CAP - ctx.study);
+        if(m >= 15){ add(n > 0 && !ctx.queue.length ? {kind:"focus", act:"matome", subject:null} : Object.assign({kind:"focus", n:++blockNo}, nextAct()), m); ctx.study += m; }
+        break;
+      } else break;
+    }
+    // drop a trailing break if one slipped in
+    while(items.length && items[items.length - 1].kind === "break" && items[items.length - 1].win === winId) items.pop();
+  });
+  return {items, ctx, stage:st};
+}
+
+/* ---------------- ntfy ---------------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// ntfy.sh limits how fast one phone can send requests; on 429 wait longer each time.
+const BACKOFF = [5, 10, 20, 30, 45, 60];
+let onWait = null;
+async function ntfyPost(body){
+  for(let i = 0; i <= BACKOFF.length; i++){
+    // plain-text body = "simple" CORS request (no preflight); ntfy reads the JSON either way
+    let r;
+    try{ r = await fetch("https://ntfy.sh/", {method:"POST", body:JSON.stringify(Object.assign({topic:settings.topic}, body))}); }
+    catch(e){ r = {status:0}; }
+    if((r.status === 429 || r.status === 0) && i < BACKOFF.length){ onWait && onWait(BACKOFF[i]); await sleep(BACKOFF[i] * 1000); continue; }
+    if(r.status === 0) throw new Error("ntfy.sh につながりません。電波を確認してください");
+    if(!r.ok) throw new Error(r.status === 429 ? "送信が混み合っています。数分おいてからもう一度押してください" : "ntfy " + r.status);
+    return r.json();
+  }
+}
+async function ntfyDelete(sid){
+  for(let i = 0; i <= BACKOFF.length; i++){
+    try{
+      const r = await fetch("https://ntfy.sh/" + encodeURIComponent(settings.topic) + "/" + encodeURIComponent(sid) + "/delete");
+      if(r.ok) return true;
+      if(r.status !== 429) return false;
+    }catch(e){}
+    if(i < BACKOFF.length){ onWait && onWait(BACKOFF[i]); await sleep(BACKOFF[i] * 1000); }
+  }
+  return false;
+}
+/* Cancels every booked notification still in the future. Throws if some could not be cancelled
+   (they stay in `sent` so the next press retries them). */
+async function cancelPending(onProgress, keepSids){
+  const now = Date.now(), pending = sent.filter(s => s.at > now && !(keepSids && keepSids.has(s.sid))), failed = [];
+  let k = 0;
+  for(const s of pending){
+    if(!(await ntfyDelete(s.sid))) failed.push(s);
+    onProgress && onProgress(++k, pending.length);
+  }
+  sent = failed; saveSent();
+  if(failed.length) throw new Error(failed.length + "件の通知を取り消せませんでした");
+}
+const appUrl = () => location.href.split("#")[0];
+function buildMessages(p){
+  const msgs = [], items = p.items, focusTotal = p.focusTotal;
+  const byWin = {};
+  items.forEach(i => (byWin[i.win] = byWin[i.win] || []).push(i));
+  Object.values(byWin).forEach(list => {
+    const first = list[0], last = list[list.length - 1];
+    if(settings.pre) msgs.push({at:first.start - 5 * MIN, title:"あと5分で学習開始", tags:["alarm_clock"], priority:4,
+      message:hhmm(first.start) + "から " + titleOf(first) + "（" + subjName(first.subject, first.act) + "）。机の準備をしましょう。"});
+    list.forEach((it, k) => {
+      if(it.kind === "break"){
+        const prev = list[k - 1], next = list[k + 1];
+        let msg = hhmm(it.end) + "から " + (next ? titleOf(next) + "（" + subjName(next.subject, next.act) + "）" : "");
+        if(prev && ACT[prev.act] && ACT[prev.act].score) msg += "\n過去問の正解数をアプリに記録しておきましょう。";
+        msgs.push({at:it.start, title:(it.long ? "長い休憩 " : "休憩 ") + it.min + "分", tags:["coffee"], priority:4, message:msg + "\n" + it.tip});
+      } else {
+        const label = it.act === "warmup" ? "ウォームアップ" : it.act === "matome" ? "まとめ" : "集中 " + it.n + "/" + focusTotal;
+        msgs.push({at:it.start, title:label + "｜" + ACT[it.act].title, tags:["books"], priority:4,
+          message:subjName(it.subject, it.act) + "　" + hhmm(it.start) + "〜" + hhmm(it.end) + "（" + it.min + "分）\n" + ACT[it.act].tip});
+      }
+    });
+    const lastWin = list === Object.values(byWin).slice(-1)[0];
+    msgs.push({at:last.end, title:lastWin ? "今日の学習おわり" : "この時間帯の学習おわり", tags:["tada"], priority:3,
+      message:lastWin ? "お疲れさまでした。過去問の結果をアプリに記録して、今日はゆっくり休みましょう。" : "お疲れさまでした。次の時間帯にまた通知します。"});
+  });
+  return msgs.map((m, i) => Object.assign(m, {sid:p.day.replace(/-/g, "") + "-" + i}));
+}
+const titleOf = it => it.kind === "break" ? "休憩" : ACT[it.act].title;
+
+async function schedule(){
+  const btn = $("btnSchedule");
+  btn.disabled = true;
+  setStatus("schedStatus", "通知を予約しています…", "");
+  try{
+    const now = Date.now();
+    const keep = plan ? plan.items.filter(i => i.end <= now).concat(plan.items.filter(i => i.start < now && i.end > now).map(i => Object.assign({}, i, {end:now, min:Math.round((now - i.start) / MIN), cut:true}))) : [];
+    const from = Math.ceil((now + MIN) / MIN) * MIN;
+    const built = buildPlan(from, keep.filter(i => i.min > 0));
+    const newPlan = {id:"p" + uid(), day:dayKey(new Date()), items:built.items, logged:plan ? plan.logged : [], scored:plan ? plan.scored : []};
+    if(!newPlan.items.some(i => i.start >= now)) throw new Error("今からの学習時間がありません。時間帯を見直してください");
+    const focusTotal = newPlan.items.filter(i => i.kind === "focus" && i.n).length;
+    const future = buildMessages({day:newPlan.day, focusTotal, items:newPlan.items.filter(i => i.start >= now)}).filter(m => m.at > Date.now() + 15000);
+    onWait = sec => setStatus("schedStatus", "送信が混み合っているので" + sec + "秒待っています…（このまま開いておいてください）", "warn");
+    let done = 0;
+    // publishing with the same sequence id replaces a booked message, so only leftovers need deleting
+    for(const m of future){
+      await ntfyPost({title:m.title, message:m.message, tags:m.tags, priority:m.priority, delay:String(Math.floor(m.at / 1000)), sequence_id:m.sid, click:appUrl()});
+      sent = sent.filter(x => x.sid !== m.sid).concat({sid:m.sid, at:m.at}); saveSent(); done++;
+      setStatus("schedStatus", "通知を予約しています… " + done + "/" + future.length, "");
+    }
+    await cancelPending((k, n) => setStatus("schedStatus", "不要になった通知を取り消しています… " + k + "/" + n, ""), new Set(future.map(m => m.sid)));
+    plan = newPlan; dirty = false; savePlan(); saveWindows();
+    setStatus("schedStatus", done + "件の通知を予約しました。最初の通知は " + (future[0] ? hhmm(future[0].at) : "-") + "。アプリを閉じても届きます。", "ok");
+  }catch(e){
+    setStatus("schedStatus", "予約できませんでした：" + (e.message || e) + "。電波を確認してもう一度押してください。", "err");
+  }
+  btn.disabled = false;
+  renderAll();
+}
+async function stopToday(){
+  $("btnCancel").disabled = true;
+  onWait = sec => setStatus("schedStatus", "送信が混み合っているので" + sec + "秒待っています…", "warn");
+  try{ await cancelPending((k, n) => setStatus("schedStatus", "通知を取り消しています… " + k + "/" + n, "")); }
+  catch(e){ $("btnCancel").disabled = false; setStatus("schedStatus", e.message + "。電波を確認して、もう一度「今日はここまで」を押してください。", "err"); return; }
+  if(plan){
+    const now = Date.now();
+    plan.items = plan.items.filter(i => i.start < now).map(i => i.end > now ? Object.assign({}, i, {end:now, min:Math.max(0, Math.round((now - i.start) / MIN)), cut:true}) : i).filter(i => i.min > 0);
+    savePlan();
+  }
+  $("btnCancel").disabled = false;
+  setStatus("schedStatus", "残りの通知を取り消しました。", "ok");
+  renderAll();
+}
+
+/* ---------------- logging ---------------- */
+function addLog(entry){
+  logs.push(Object.assign({id:"log-" + Date.now() + "-" + uid(), ts:Date.now(), day:dayKey(new Date())}, entry));
+  ls.set("hr2.logs", logs);
+}
+let scoreQueue = [];
+function processCompletions(){
+  if(!plan) return;
+  const now = Date.now(); let changed = false;
+  plan.items.forEach(i => {
+    if(i.kind !== "focus" || i.end > now || plan.logged.includes(i.uid)) return;
+    plan.logged.push(i.uid); changed = true;
+    if(i.min >= 1) addLog({type:"study", act:i.act, subject:i.subject, minutes:i.min});
+    if(ACT[i.act].score && i.subject && !plan.scored.includes(i.uid)) scoreQueue.push(i);
+  });
+  // also queue unscored output blocks from earlier this session (e.g. after reload)
+  plan.items.forEach(i => { if(i.kind === "focus" && i.end <= now && ACT[i.act].score && i.subject && !plan.scored.includes(i.uid) && !scoreQueue.includes(i)) scoreQueue.push(i); });
+  if(changed) savePlan();
+  renderScore();
+}
+function renderScore(){
+  const i = scoreQueue[0];
+  if(!i){ $("scoreCard").hidden = true; return; }
+  if($("scoreCard").hidden || $("scoreCard").dataset.uid !== i.uid){
+    $("scoreCard").dataset.uid = i.uid;
+    $("scoreTitle").textContent = hhmm(i.start) + " " + ACT[i.act].title + "（" + subjName(i.subject, i.act) + "）の結果";
+    $("scoreOk").value = 0; $("scoreAll").value = i.act === "kakotext" ? subjById[i.subject].q : 20;
+  }
+  $("scoreCard").hidden = false;
+}
+function closeScore(save){
+  const i = scoreQueue.shift(); if(!i) return;
+  if(save){
+    const ok = Math.max(0, parseInt($("scoreOk").value) || 0), all = Math.max(1, parseInt($("scoreAll").value) || 1);
+    if(ok > all){ scoreQueue.unshift(i); toast("正解数が問題数を超えています"); return; }
+    addLog({type:"score", act:i.act, subject:i.subject, ok, total:all});
+    const pct = Math.round(ok / all * 100);
+    toast(pct >= 60 ? pct + "%。合格ラインを超えています" : pct + "%。×の問題を間違いノートへ");
+  }
+  plan.scored.push(i.uid); savePlan();
+  $("scoreCard").hidden = true; renderScore(); renderStats(); renderPlan();
+}
+$("scoreSave").onclick = () => closeScore(true);
+$("scoreSkip").onclick = () => closeScore(false);
+
+/* ---------------- render: now card ---------------- */
+const CIRC = 2 * Math.PI * 108;
+let lastPhaseUid = null, actx = null;
+function chime(kind){
+  if(!settings.sound) return;
+  try{
+    if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    const seq = kind === "break" ? [784, 659, 523] : [523, 659, 784], t0 = actx.currentTime;
+    seq.forEach((f, i) => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = f; const t = t0 + i * .22;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.3, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .9);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 1); });
+  }catch(e){}
+}
+document.addEventListener("pointerdown", () => { try{ if(settings.sound && !actx) actx = new (window.AudioContext || window.webkitAudioContext)(); actx && actx.resume(); }catch(e){} }, {once:true});
+
+function renderNow(){
+  const card = $("now"), now = Date.now();
+  const items = plan ? plan.items : [];
+  const cur = items.find(i => i.start <= now && now < i.end);
+  const next = items.find(i => i.start > now);
+  const focusTotal = items.filter(i => i.kind === "focus" && i.n).length;
+  let kind, pill, clock, sub, title, subject, tip = null, link = null, frac = 0;
+  if(cur){
+    kind = cur.kind;
+    if(cur.uid !== lastPhaseUid){ if(lastPhaseUid) chime(cur.kind); lastPhaseUid = cur.uid; }
+    clock = fmtLeft(cur.end - now); sub = hhmm(cur.end) + " まで"; frac = (now - cur.start) / (cur.end - cur.start);
+    if(cur.kind === "break"){
+      pill = cur.long ? "長い休憩" : "休憩"; title = cur.long ? "しっかり休憩" : "ひと休み";
+      const nx = items[items.indexOf(cur) + 1];
+      subject = nx ? "次は " + titleOf(nx) + "（" + subjName(nx.subject, nx.act) + "）" : ""; tip = cur.tip;
+    } else {
+      pill = cur.act === "warmup" ? "ウォームアップ" : cur.act === "matome" ? "まとめ" : "集中 " + cur.n + "/" + focusTotal + "・" + ACT[cur.act].tag;
+      title = ACT[cur.act].title; subject = subjName(cur.subject, cur.act); tip = ACT[cur.act].tip;
+      link = ACT[cur.act].link && cur.subject ? ACT[cur.act].link(subjName(cur.subject, cur.act)) : null;
+    }
+  } else if(next){
+    kind = "wait"; pill = "次の学習まで"; clock = fmtLeft(next.start - now); sub = hhmm(next.start) + " 開始";
+    title = titleOf(next); subject = subjName(next.subject, next.act) + "　通知でお知らせします";
+    const prevEnd = items.filter(i => i.end <= now).map(i => i.end).pop() || (now - 1);
+    frac = Math.max(0, Math.min(1, (now - prevEnd) / (next.start - prevEnd)));
+  } else if(items.length){
+    kind = "done"; pill = "完了"; clock = "おつかれ"; sub = ""; frac = 1;
+    title = "今日の学習は終わりました"; subject = "記録タブで今日の成果を確認できます";
+  } else {
+    kind = "none"; pill = "予定なし"; clock = "--:--"; sub = "";
+    title = "今日の予定を作りましょう"; subject = "下で学習できる時間を入れて「通知を予約」を押します";
+  }
+  card.dataset.kind = kind;
+  $("pill").textContent = pill; $("clock").textContent = clock; $("clockSub").textContent = sub;
+  $("clock").style.fontSize = clock.length > 5 ? "clamp(32px,10vw,44px)" : "";
+  $("taskTitle").textContent = title; $("taskSubject").textContent = subject;
+  $("tip").hidden = !tip; if(tip) $("tip").textContent = tip;
+  $("links").innerHTML = "";
+  if(link){ const a = document.createElement("a"); a.href = link[1]; a.target = "_blank"; a.rel = "noopener"; a.textContent = link[0] + " ↗"; $("links").append(a); }
+  $("prog").style.strokeDashoffset = (CIRC * (1 - frac)).toFixed(1);
+  $("btnCancel").hidden = !(plan && next || cur);
+  $("setupNag").hidden = settings.tested;
+}
+
+/* ---------------- render: windows + subjects ---------------- */
+function renderWindows(){
+  const box = $("windows"); box.innerHTML = "";
+  windows.forEach((w, i) => {
+    if(!w){ // "スキマ30分" placeholder: now → +30
+      const s = new Date(Math.ceil((Date.now() + 2 * MIN) / (5 * MIN)) * 5 * MIN), e = new Date(s.getTime() + 30 * MIN);
+      w = windows[i] = [hhmm(s), hhmm(e)];
+    }
+    const row = document.createElement("div"); row.className = "win";
+    row.innerHTML = '<input type="time" id="ws' + i + '" aria-label="開始時刻" value="' + w[0] + '"><span>〜</span><input type="time" id="we' + i + '" aria-label="終了時刻" value="' + w[1] + '"><button class="x" type="button" aria-label="この時間帯を削除">×</button>';
+    row.querySelector("#ws" + i).onchange = e => { windows[i][0] = e.target.value; onEdit(); };
+    row.querySelector("#we" + i).onchange = e => { windows[i][1] = e.target.value; onEdit(); };
+    row.querySelector(".x").onclick = () => { windows.splice(i, 1); onEdit(); renderWindows(); };
+    box.append(row);
+  });
+  if(!windows.length) box.innerHTML = '<p class="hint">時間帯がありません。「＋ 時間帯を追加」で入れてください。</p>';
+  $("dowHint").textContent = "日月火水木金土"[new Date().getDay()] + "曜日の内容として保存されます";
+}
+$("addWin").onclick = () => {
+  const last = windows[windows.length - 1];
+  const s = last && last[1] ? atToday(last[1]) + 60 * MIN : Math.ceil((Date.now() + 5 * MIN) / (30 * MIN)) * 30 * MIN;
+  windows.push([hhmm(s), hhmm(s + 60 * MIN)]); onEdit(); renderWindows();
+};
+document.querySelectorAll("[data-preset]").forEach(b => b.onclick = () => { windows = PRESETS[b.dataset.preset].map(w => w ? w.slice() : null); renderWindows(); onEdit(); });
+function onEdit(){ dirty = true; saveWindows(); renderPlan(); if(plan && plan.items.some(i => i.start > Date.now())) setStatus("schedStatus", "時間帯や科目を変えました。「通知を予約し直す」で反映されます。", "warn"); }
+
+function renderChips(){
+  const box = $("subjectChips"); box.innerHTML = "";
+  SUBJECTS.forEach(s => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip";
+    const idx = settings.pinned.indexOf(s.id);
+    b.setAttribute("aria-pressed", idx >= 0);
+    b.textContent = (idx >= 0 && settings.pinned.length > 1 ? (idx + 1) + ". " : "") + s.name;
+    b.onclick = () => { if(idx >= 0) settings.pinned.splice(idx, 1); else settings.pinned.push(s.id); saveSettings(); renderChips(); onEdit(); };
+    box.append(b);
+  });
+}
+
+/* ---------------- render: plan ---------------- */
+let dirty = false;   // windows/subjects/settings changed since the last booking
+function currentPlanView(){
+  const now = Date.now();
+  if(plan && !dirty) return {items:plan.items, scheduled:true, stage:stage(), ctx:null};
+  const keep = plan ? plan.items.filter(i => i.end <= now) : [];
+  const b = buildPlan(Math.ceil((now + MIN) / MIN) * MIN, keep);
+  return {items:b.items, scheduled:false, stage:b.stage, ctx:b.ctx};
+}
+function renderPlan(){
+  const v = currentPlanView(), now = Date.now();
+  const focusMin = v.items.filter(i => i.kind === "focus").reduce((a, i) => a + i.min, 0);
+  const breakMin = v.items.filter(i => i.kind === "break").reduce((a, i) => a + i.min, 0);
+  $("sumStudy").textContent = hm(focusMin); $("sumBreak").textContent = hm(breakMin);
+  $("sumBlocks").textContent = v.items.filter(i => i.kind === "focus" && i.n).length;
+  $("planHeading").textContent = v.scheduled ? "今日の予定" : "今日の提案";
+  $("planBadge").textContent = v.scheduled ? "通知予約済み" : "まだ予約していません";
+  $("btnSchedule").textContent = plan && plan.items.some(i => i.start > now) ? "通知を予約し直す" : (plan ? "今から組み直して予約" : "この予定で通知を予約");
+
+  // reasons
+  const why = [];
+  const ctx = v.ctx || buildPlan(Math.ceil((now + MIN) / MIN) * MIN, plan ? plan.items.filter(i => i.end <= now) : []).ctx;
+  const styles = [...new Set(ctx.styles)];
+  if(styles.length) why.push("組み方：" + styles.map(s => ({short:"1時間未満の時間帯は20〜30分の短時間集中", pomo:"1〜3時間の時間帯は25分集中＋5分休憩", deep:"3時間以上の時間帯は50分集中＋10分休憩"})[s]).join("、"));
+  why.push("時期：" + STAGE_LABEL[v.stage] + (daysToExam() != null ? "（試験まで" + daysToExam() + "日）" : "（試験日を設定すると時期に合わせて配分します）"));
+  const subs = [...new Set(v.items.filter(i => i.subject && i.start >= now).map(i => i.subject))];
+  if(subs.length){
+    const rk = Object.fromEntries((settings.pinned.length ? [] : ranked()).map(r => [r.id, r.reason]));
+    why.push("科目：" + subs.map(id => subjName(id) + (rk[id] ? "（" + rk[id] + "）" : "")).join("、"));
+  }
+  if(ctx.capped) why.push("1日の上限6時間に達したので、それ以降は入れていません。");
+  if(!v.items.length) why.push("学習できる時間帯（15分以上）を入れると、ここに予定が出ます。");
+  $("why").innerHTML = why.map(t => "<li>" + t + "</li>").join("");
+
+  const ul = $("timeline"); ul.innerHTML = "";
+  let lastWin = null;
+  const focusTotal = v.items.filter(i => i.kind === "focus" && i.n).length;
+  v.items.forEach((it, k) => {
+    if(it.win !== lastWin){
+      if(lastWin !== null){ const prev = v.items[k - 1]; ul.append(endRow(prev.end)); }
+      const winItems = v.items.filter(x => x.win === it.win);
+      const sep = document.createElement("li"); sep.className = "sep";
+      sep.textContent = hhmm(winItems[0].start) + "〜" + hhmm(winItems[winItems.length - 1].end);
+      ul.append(sep); lastWin = it.win;
+    }
+    const li = document.createElement("li");
+    const cls = it.kind === "break" ? "b" : (it.act === "warmup" || it.act === "matome") ? "r" : "";
+    li.className = cls + (it.end <= now ? " done" : "") + (it.start <= now && now < it.end ? " cur" : "");
+    const what = it.kind === "break" ? (it.long ? "長い休憩" : "休憩") : ACT[it.act].title;
+    const sub = it.kind === "break" ? "" : "<small>" + subjName(it.subject, it.act) + "・" + ACT[it.act].tag + (it.n ? "・" + it.n + "/" + focusTotal : "") + "</small>";
+    li.innerHTML = '<span class="t num">' + hhmm(it.start) + '</span><span class="dot"></span><span class="what">' + what + sub + '</span><span class="m num">' + it.min + '分</span>';
+    ul.append(li);
+  });
+  if(v.items.length) ul.append(endRow(v.items[v.items.length - 1].end));
+}
+function endRow(t){ const li = document.createElement("li"); li.className = "end"; li.innerHTML = '<span class="t num">' + hhmm(t) + '</span><span class="dot"></span><span class="what">おわり</span><span></span>'; return li; }
+
+/* ---------------- render: stats ---------------- */
+function renderStats(){
+  const study = logs.filter(l => l.type === "study");
+  const byDay = {}; study.forEach(l => byDay[l.day] = (byDay[l.day] || 0) + l.minutes);
+  const today = new Date(), days = [];
+  for(let i = 6; i >= 0; i--){ const d = new Date(today); d.setDate(d.getDate() - i); days.push(d); }
+  $("kWeek").textContent = hShort(days.reduce((a, d) => a + (byDay[dayKey(d)] || 0), 0));
+  const totalMin = study.reduce((a, l) => a + l.minutes, 0);
+  $("kTotal").textContent = hShort(totalMin);
+  let streak = 0; const d = new Date(today);
+  if(!byDay[dayKey(d)]) d.setDate(d.getDate() - 1);
+  while(byDay[dayKey(d)]){ streak++; d.setDate(d.getDate() - 1); }
+  $("kStreak").textContent = streak + "日";
+
+  const doneH = settings.prior + totalMin / 60, pct = Math.min(100, doneH / settings.target * 100);
+  $("goalBar").style.width = pct + "%";
+  $("goalText").textContent = Math.round(doneH) + " / " + settings.target + "時間";
+  $("goalPace").textContent = paceText();
+  $("myPace").innerHTML = "<b>あなたの場合</b><br>" + paceText();
+
+  const max = Math.max(60, ...days.map(x => byDay[dayKey(x)] || 0));
+  $("bars").innerHTML = days.map((x, i) => { const m = byDay[dayKey(x)] || 0;
+    return '<div class="bar' + (i === 6 ? " today" : "") + '"><small class="num">' + (m ? hShort(m) : "") + '</small><i style="height:' + (m / max * 100) + '%"></i><em>' + (i === 6 ? "今日" : "日月火水木金土"[x.getDay()]) + '</em></div>'; }).join("");
+
+  const st = subjectStats(), rows = SUBJECTS.filter(s => st[s.id].minutes || st[s.id].total);
+  $("subjStats").innerHTML = rows.length ? rows.map(s => {
+    const v = st[s.id], p = v.total ? Math.round(v.ok / v.total * 100) : null;
+    return '<div class="srow"><b>' + s.name + '</b><span class="num">' + (p == null ? "未入力" : p + "%") + '</span><div class="meter"><i class="' + (p >= 60 ? "ok" : "") + '" style="width:' + (p || 0) + '%"></i><span class="line"></span></div><span class="meta num">学習 ' + hShort(v.minutes) + (v.total ? "・" + v.ok + "/" + v.total + "問" : "") + '</span></div>';
+  }).join("") : '<div class="empty">まだ記録がありません。過去問のブロックが終わると、正解数を入力する欄が出ます。</div>';
+
+  const recent = logs.slice(-15).reverse();
+  $("logList").innerHTML = recent.length ? recent.map(l => {
+    const dt = new Date(l.ts);
+    return '<li><span><span class="hint num">' + (dt.getMonth() + 1) + "/" + dt.getDate() + " " + hhmm(l.ts) + '</span>　' + subjName(l.subject, l.act) + "・" + ACT[l.act].title + '</span><b class="num">' + (l.type === "score" ? l.ok + "/" + l.total + "問" : l.minutes + "分") + '</b></li>';
+  }).join("") : '<li class="empty" style="border:0;justify-content:center">予定のブロックが終わるたびに、ここへ自動で記録されます。</li>';
+}
+function paceText(){
+  const totalMin = logs.filter(l => l.type === "study").reduce((a, l) => a + l.minutes, 0);
+  const left = Math.max(0, settings.target - settings.prior - totalMin / 60), d = daysToExam();
+  if(left <= 0) return "目標時間に到達しました。ここからは過去問の正答率を全科目6割以上に揃えることを優先しましょう。";
+  if(d == null || d <= 0) return "目標まであと約" + Math.round(left) + "時間。設定で試験日を入れると、1日に必要な時間を計算します。";
+  const perDay = Math.ceil(left * 60 / d);
+  return "目標まであと約" + Math.round(left) + "時間 ÷ 試験まで" + d + "日 ＝ 1日あたり約" + hm(perDay) + "。" +
+    (perDay > 240 ? "かなり多めなので、休日を厚めにして、正答率の低い科目に絞りましょう。" : perDay > 120 ? "平日2時間・休日4時間くらいが目安です。" : "平日1〜2時間のペースで十分間に合います。");
+}
+
+/* ---------------- settings ---------------- */
+function fillSettings(){
+  $("topic").textContent = settings.topic;
+  $("sPre").checked = settings.pre; $("sSound").checked = settings.sound;
+  $("sExam").value = settings.exam; $("sTarget").value = settings.target; $("sPrior").value = settings.prior; $("sStyle").value = settings.style;
+}
+const clampInt = (v, lo, hi, d) => { const n = parseInt(v); return isNaN(n) ? d : Math.min(hi, Math.max(lo, n)); };
+document.querySelectorAll("#view-settings input, #view-settings select").forEach(el => el.addEventListener("change", () => {
+  settings.pre = $("sPre").checked; settings.sound = $("sSound").checked; settings.exam = $("sExam").value;
+  settings.target = clampInt($("sTarget").value, 50, 2000, 400); settings.prior = clampInt($("sPrior").value, 0, 2000, 0);
+  settings.style = $("sStyle").value;
+  saveSettings(); renderAll();
+  if(plan && plan.items.some(i => i.start > Date.now()) && (el.id === "sExam" || el.id === "sStyle" || el.id === "sPre")){ dirty = true; setStatus("schedStatus", "設定を変えました。今日の予定に反映するには「通知を予約し直す」を押してください。", "warn"); }
+}));
+$("copyTopic").onclick = async () => {
+  try{ await navigator.clipboard.writeText(settings.topic); toast("コピーしました。ntfy に貼り付けてください"); }
+  catch(e){ const r = document.createRange(); r.selectNodeContents($("topic")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("選択しました。長押しでコピーしてください"); }
+};
+$("testNotify").onclick = async () => {
+  $("testNotify").disabled = true;
+  setStatus("testStatus", "送信しています…", "");
+  try{
+    onWait = sec => setStatus("testStatus", "混み合っているので" + sec + "秒待っています…", "warn");
+    await ntfyPost({title:"テスト通知", message:"届いていれば設定完了です。学習の時間になると、このように知らせます。", tags:["white_check_mark"], priority:4, click:appUrl()});
+    settings.tested = true; saveSettings();
+    setStatus("testStatus", "送信しました。数秒以内にスマホに届けば完了です。届かない場合はトピック名と ntfy の通知許可を確認してください。", "ok");
+  }catch(e){ setStatus("testStatus", "送信できませんでした：" + e.message, "err"); }
+  $("testNotify").disabled = false; renderNow();
+};
+function renderCountdown(){
+  const d = daysToExam(), el = $("countdown");
+  el.innerHTML = d == null ? "試験日を設定" : d > 0 ? '試験まで<b class="num">' + d + '</b>日' : d === 0 ? "今日が試験日" : "試験日を更新";
+}
+$("countdown").onclick = () => { showView("settings"); setTimeout(() => $("sExam").focus(), 60); };
+
+/* ---------------- shell ---------------- */
+function setStatus(id, msg, kind){ const el = $(id); el.hidden = !msg; el.textContent = msg; el.className = "status" + (kind ? " " + kind : ""); }
+function showView(v){
+  ["today","stats","settings"].forEach(n => $("view-" + n).hidden = n !== v);
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.view === v));
+  if(v === "stats") renderStats();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => showView(b.dataset.view));
+document.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => showView(b.dataset.goto));
+let toastT;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+$("btnSchedule").onclick = schedule;
+$("btnCancel").onclick = stopToday;
+
+function renderAll(){ renderCountdown(); renderWindows(); renderChips(); processCompletions(); renderNow(); renderPlan(); renderStats(); }
+fillSettings(); renderAll();
+setInterval(() => { renderNow(); processCompletions(); }, 1000);
+setInterval(() => { if(!$("view-today").hidden) renderPlan(); }, 30000);
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ if(plan && plan.day !== dayKey(new Date())){ plan = null; savePlan(); } renderAll(); } });
+})();
+</script>
+</body>
+</html>
