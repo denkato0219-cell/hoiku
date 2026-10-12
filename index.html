@@ -58,6 +58,10 @@ header.top h1{font-size:19px;font-weight:900}
 .btn.small{padding:7px 14px;font-size:13px}
 .btn.ghost{background:none;border:1px solid var(--line)}
 .btn:disabled{opacity:.45;cursor:default}
+.btn.big{font-size:20px;padding:16px 48px;min-width:200px;box-shadow:0 6px 18px color-mix(in srgb,var(--study) 35%,transparent)}
+.now[data-kind="ready"]{background:linear-gradient(180deg,var(--accent-soft),var(--surface) 70%)}
+.now[data-kind="ready"] .pill{background:var(--accent);color:#1B2838}
+.now[data-kind="ready"] .dial .prog{stroke:var(--accent)}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 
 /* now card */
@@ -160,10 +164,23 @@ header.top h1{font-size:19px;font-weight:900}
 .guide table{border-collapse:collapse;width:100%;font-size:13px}
 .guide td,.guide th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
 .guide th{color:var(--muted);font-weight:500;white-space:nowrap}
+.strat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.strat.passed{opacity:.6}
+.strat .meta{font-size:12px;color:var(--muted)}
+.strat .reason{font-size:13px}
+.verdict{font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;white-space:nowrap}
+.v-good{background:var(--rest-soft);color:var(--good)} .v-near{background:var(--study-soft);color:var(--study)}
+.v-work{background:var(--accent-soft);color:var(--ink)} .v-hard{background:color-mix(in srgb,var(--bad) 16%,var(--surface));color:var(--bad)}
+.v-none{background:var(--sunk);color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 12px;font-size:13px;font-weight:700;font-family:var(--display)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.rec-hint{font-size:12px;font-weight:700;color:var(--study)}
 .mine{background:var(--study-soft);border-radius:12px;padding:12px 14px;font-size:14px}
 
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
-nav.tabs .in{display:grid;grid-template-columns:repeat(3,1fr);max-width:560px;width:100%}
+nav.tabs .in{display:grid;grid-template-columns:repeat(4,1fr);max-width:560px;width:100%}
 nav.tabs button{border:0;background:none;padding:10px 0 12px;font-family:var(--display);font-weight:700;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
 nav.tabs button svg{width:22px;height:22px}
 nav.tabs button[aria-selected="true"]{color:var(--study)}
@@ -199,9 +216,13 @@ nav.tabs button[aria-selected="true"]{color:var(--study)}
         </div>
       </div>
       <div class="task-title" id="taskTitle">今日の予定を作りましょう</div>
-      <div class="task-subject" id="taskSubject">下で学習できる時間を入れて「通知を予約」を押します</div>
+      <div class="task-subject" id="taskSubject">下で学習できる時間を入れてください</div>
       <div class="tip" id="tip" hidden></div>
       <div class="links" id="links"></div>
+      <div class="btns" style="justify-content:center;margin-top:6px">
+        <button class="btn primary" id="btnStart" type="button" hidden>開始</button>
+        <button class="btn ghost" id="btnPause" type="button" hidden>中断</button>
+      </div>
     </div>
 
     <div class="card score" id="scoreCard" hidden>
@@ -227,10 +248,10 @@ nav.tabs button[aria-selected="true"]{color:var(--study)}
         <button class="btn small ghost" type="button" data-preset="holiday">休日</button>
         <button class="btn small ghost" type="button" data-preset="short">スキマ30分</button>
       </div>
-      <div class="row" style="margin-top:4px"><h2 style="font-size:15px">科目</h2><span class="hint">選ばなければおまかせ（弱点・久しぶりの科目を優先）</span></div>
+      <div class="row" style="margin-top:4px"><h2 style="font-size:15px">科目</h2><span class="hint">選ばなければおまかせ（作戦タブで「狙う」にした科目から、弱点を優先）</span></div>
       <div class="chips" id="subjectChips"></div>
       <div class="btns" style="margin-top:4px">
-        <button class="btn primary" id="btnSchedule" type="button">この予定で通知を予約</button>
+        <button class="btn dark" id="btnSchedule" type="button">開始時刻に通知を予約</button>
         <button class="btn ghost" id="btnCancel" type="button" hidden>今日はここまで</button>
       </div>
       <div class="status" id="schedStatus" hidden></div>
@@ -245,6 +266,32 @@ nav.tabs button[aria-selected="true"]{color:var(--study)}
       </div>
       <ul class="why" id="why"></ul>
       <ol class="tl" id="timeline"></ol>
+    </div>
+  </section>
+
+  <!-- ============ 作戦 ============ -->
+  <section id="view-strategy" hidden>
+    <div class="card">
+      <div class="row"><h2>次の試験の作戦</h2><span class="hint" id="stratExam"></span></div>
+      <p style="font-size:14px">科目ごとに「狙う／見送り／合格済み」を選ぶと、今日の時間割は「狙う」科目だけで組まれます。直近の過去問の正答率から、どれを優先するかをおすすめします。</p>
+      <div class="summary">
+        <div><span>狙う科目</span><b class="num" id="stratSumTarget">-</b></div>
+        <div><span>必要な時間の目安</span><b class="num" id="stratSumNeed">-</b></div>
+        <div><span>試験までに使える時間</span><b class="num" id="stratSumAvail" style="font-size:16px">-</b></div>
+      </div>
+      <div class="status" id="stratJudge" hidden></div>
+      <button class="btn small dark" id="stratApply" type="button" style="align-self:flex-start">おすすめを反映</button>
+    </div>
+    <div id="stratList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="card guide">
+      <h2 style="font-size:15px">判定の基準と注意</h2>
+      <table>
+        <tr><th>安定圏</th><td>直近の正答率70%以上。復習で維持します。</td></tr>
+        <tr><th>あと少し</th><td>55〜69%。一番伸ばしやすいので最優先。</td></tr>
+        <tr><th>要強化</th><td>40〜54%。試験まで2週間を切ったら見送り候補。</td></tr>
+        <tr><th>厳しい</th><td>40%未満。試験まで30日を切ったら見送り候補。</td></tr>
+      </table>
+      <p class="hint">必要な時間は「正答率を70%まで上げるのに1ポイントあたり約30分」として出した、ざっくりした目安です。試験までに使える時間は、曜日ごとに保存した時間帯から計算しています（まだ入れていない曜日は、平日2時間・休日5.5時間として仮計算）。科目別の合格率は毎年公表されているわけではなく、年によって大きく変わるため、判定は主にあなた自身の正答率で行っています。</p>
     </div>
   </section>
 
@@ -288,11 +335,13 @@ nav.tabs button[aria-selected="true"]{color:var(--study)}
       <div class="btns">
         <button class="btn small dark" id="copyTopic" type="button">名前をコピー</button>
         <button class="btn small primary" id="testNotify" type="button">テスト通知を送る</button>
+        <button class="btn small ghost" id="testDelayed" type="button">1分後に届く予約テスト</button>
       </div>
       <div class="status" id="testStatus" hidden></div>
       <p class="hint">トピック名を知っている人は通知を読めるので、推測されにくい名前を自動で作っています。iPhoneの「設定 → 通知 → ntfy」でサウンドをオンにし、集中モードを使う場合は ntfy を許可してください。</p>
       <div class="form">
         <label for="sPre">開始5分前にも知らせる</label><input id="sPre" type="checkbox" checked>
+        <label for="sManual">休憩のあとも「開始」を押して再開する<br><span class="hint">オフ：休憩が終わると自動で次へ進みます</span></label><input id="sManual" type="checkbox">
         <label for="sSound">アプリを開いているときもチャイム</label><input id="sSound" type="checkbox">
       </div>
     </div>
@@ -330,7 +379,7 @@ nav.tabs button[aria-selected="true"]{color:var(--study)}
         <tr><th>1か月を切ったら</th><td>過去問中心。初めて手をつける科目だけ動画から入ります。</td></tr>
       </table>
       <h2 style="font-size:15px">科目の選び方（おまかせ時）</h2>
-      <p>正答率が6割未満の科目、しばらく触れていない科目、まだ手をつけていない科目ほど先に入ります。保育士試験は全科目6割以上で合格なので、苦手を残さないことを優先しています。</p>
+      <p>作戦タブで「狙う」にした科目だけを使います。その中で、正答率が未測定・6割未満の科目、次に「あと少し」の科目、しばらく触れていない科目の順に先に入ります。</p>
     </div>
   </section>
 </div>
@@ -338,6 +387,7 @@ nav.tabs button[aria-selected="true"]{color:var(--study)}
 <nav class="tabs" role="tablist" aria-label="画面切り替え">
   <div class="in">
     <button role="tab" aria-selected="true" data-view="today" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>今日</button>
+    <button role="tab" aria-selected="false" data-view="strategy" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>作戦</button>
     <button role="tab" aria-selected="false" data-view="stats" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>記録</button>
     <button role="tab" aria-selected="false" data-view="settings" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>設定</button>
   </div>
@@ -389,7 +439,7 @@ const ls = {
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
 };
 const randTopic = () => "hoiku-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
-const DEFAULTS = {topic:"", tested:false, pre:true, sound:false, exam:"", target:400, prior:0, style:"auto", pinned:[],
+const DEFAULTS = {topic:"", tested:false, pre:true, sound:false, manualEach:false, exam:"", target:400, prior:0, style:"auto", pinned:[],
   winByDow:{}, };
 let settings = Object.assign({}, DEFAULTS, ls.get("hr2.settings", {}));
 if(!settings.topic){ settings.topic = randTopic(); }
@@ -410,7 +460,9 @@ const fmtLeft = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); const h = M
 const hm = m => m >= 60 ? Math.floor(m / 60) + "時間" + (m % 60 ? m % 60 + "分" : "") : m + "分";
 const hShort = m => m >= 60 ? (m / 60).toFixed(1).replace(/\.0$/, "") + "h" : m + "分";
 const uid = () => Math.random().toString(36).slice(2, 10);
-if(plan && plan.day !== dayKey(new Date())) { plan = null; savePlan(); }
+// older versions booked the whole day automatically; their entries have no `run` / `kind`
+if(!plan || plan.day !== dayKey(new Date()) || !("run" in plan)) plan = {day:dayKey(new Date()), items:[], logged:[], scored:[], run:null, closed:false};
+savePlan();
 
 function daysToExam(){
   if(!settings.exam) return null;
@@ -444,30 +496,157 @@ function subjectStats(){
     if(l.type === "score"){ s.ok += l.ok; s.total += l.total; } });
   return st;
 }
+/* Accuracy over the most recent ~60 questions, so improvement shows up quickly. */
+function recentAcc(id){
+  let ok = 0, total = 0;
+  for(let k = logs.length - 1; k >= 0 && total < 60; k--){ const l = logs[k]; if(l.type === "score" && l.subject === id){ ok += l.ok; total += l.total; } }
+  return {acc: total >= 5 ? ok / total : null, total};
+}
+const statusOf = id => (settings.subjStatus || {})[id] || "target";
+/* Subjects the planner may use: the ones marked 狙う, or every not-yet-passed subject if none are. */
+function activeSubjects(){
+  const t = SUBJECTS.filter(s => statusOf(s.id) === "target");
+  return t.length ? t : SUBJECTS.filter(s => statusOf(s.id) !== "passed");
+}
 function ranked(){
   const st = subjectStats(), now = Date.now();
-  return SUBJECTS.map(s => {
-    const v = st[s.id], acc = v.total >= 5 ? v.ok / v.total : null;
+  return activeSubjects().map(s => {
+    const v = st[s.id], acc = recentAcc(s.id).acc;
     const days = v.last ? Math.floor((now - v.last) / 86400000) : null;
-    // weak (<60%) first, then untouched, then long-unvisited
-    let score = (acc != null && acc < 0.6 ? 3 + (0.6 - acc) * 5 : acc != null ? (1 - acc) : 0) + (v.minutes === 0 ? 2 : 0) + (days == null ? 0 : Math.min(days, 14) / 14 * 1.5);
+    // unmeasured or below 60% first, then "almost there", then stable; long-unvisited ones move up
+    let score = (acc == null ? 3 : acc < 0.6 ? 3 + (0.6 - acc) * 5 : acc < 0.7 ? 2 : 0.5) + (days == null ? 0 : Math.min(days, 14) / 14 * 1.5);
     let reason;
-    if(acc != null && acc < 0.6) reason = "正答率" + Math.round(acc * 100) + "%で合格ライン未満";
-    else if(v.minutes === 0) reason = "まだ手をつけていない";
-    else if(days != null && days >= 4) reason = days + "日間あいている";
-    else reason = "全科目を順に回すため";
-    return {id:s.id, score, reason, fresh:v.input < 30, acc};
+    if(acc == null) reason = v.minutes ? "正答率が未測定（過去問で実力チェック）" : "まだ手をつけていない";
+    else if(acc < 0.6) reason = "正答率" + Math.round(acc * 100) + "%で合格ライン未満";
+    else if(acc < 0.7) reason = "正答率" + Math.round(acc * 100) + "%。あと少しで安全圏";
+    else if(days != null && days >= 4) reason = days + "日間あいている（忘れないうちに）";
+    else reason = "正答率" + Math.round(acc * 100) + "%を維持するため";
+    // "fresh" = never studied here and never measured: start with input
+    return {id:s.id, score, reason, fresh:v.input < 30 && acc == null, acc};
   }).sort((a, b) => b.score - a.score);
 }
 
+/* ---------------- exam strategy ---------------- */
+const GROUPS = [
+  {ids:["genri"]}, {ids:["kyoiku", "yougo"], name:"教育原理・社会的養護", pair:true}, {ids:["kodomo"]}, {ids:["fukushi"]},
+  {ids:["shinri"]}, {ids:["hoken"]}, {ids:["eiyo"]}, {ids:["jisshu"]},
+];
+// Background notes only: official per-subject pass rates are not published every year and vary a lot.
+const TREND = {
+  kyoiku:"各10問なので1問の重みが大きく、難しいと言われやすい組み合わせです。",
+  fukushi:"法律・制度・統計の暗記が多く、難しいと言われやすい科目です。",
+  eiyo:"年によって合格率の振れ幅が大きい科目です（2014〜16年のデータで43〜90%）。数値の暗記が中心です。",
+  jisshu:"過去のデータでは合格率が高めの年が多い科目です（2014〜16年で76〜95%）。音楽・造形の知識も出ます。",
+};
+const VERDICT = {
+  stable:{label:"安定圏", cls:"v-good"}, near:{label:"あと少し", cls:"v-near"}, work:{label:"要強化", cls:"v-work"},
+  hard:{label:"厳しい", cls:"v-hard"}, unknown:{label:"未測定", cls:"v-none"},
+};
+/* Rough hours to bring a subject to a safe 70%. A planning aid, not a promise. */
+function hoursNeeded(acc){ return acc == null ? 6 : acc >= 0.7 ? 2 : Math.round((0.7 - acc) * 100 * 0.5); }
+/* Study hours available until the exam, from the per-weekday time slots (unset weekdays use the presets). */
+function availableHours(){
+  const d = daysToExam(); if(d == null || d <= 0) return null;
+  let min = 0;
+  for(let k = 1; k < d; k++){
+    const day = new Date(); day.setDate(day.getDate() + k);
+    const w = settings.winByDow[day.getDay()] || ([0, 6].includes(day.getDay()) ? PRESETS.holiday : PRESETS.weekday);
+    const m = w.filter(x => x && x[0] && x[1]).reduce((a, x) => { const [h1, m1] = x[0].split(":").map(Number), [h2, m2] = x[1].split(":").map(Number); return a + Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1)); }, 0);
+    min += Math.min(DAILY_CAP, m * 0.82);   // ~18% of a slot goes to breaks
+  }
+  min += previewItems().filter(i => i.kind === "focus" && i.end > Date.now()).reduce((a, i) => a + i.min, 0);
+  return Math.round(min / 60);
+}
+function strategy(){
+  const d = daysToExam(), avail = availableHours();
+  const rows = GROUPS.map(g => {
+    const ra = g.ids.map(recentAcc), known = ra.filter(r => r.acc != null);
+    const acc = known.length === g.ids.length ? Math.min(...known.map(r => r.acc)) : known.length ? Math.min(...known.map(r => r.acc)) : null;
+    const partly = known.length && known.length < g.ids.length;
+    const v = acc == null ? "unknown" : acc >= 0.7 ? "stable" : acc >= 0.55 ? "near" : acc >= 0.4 ? "work" : "hard";
+    let rec = v === "hard" && d != null && d < 30 ? "skip" : v === "work" && d != null && d < 14 ? "skip" : "target";
+    return {g, ra, acc, partly, v, rec, need:hoursNeeded(acc), name:g.name || subjById[g.ids[0]].name, status:statusOf(g.ids[0])};
+  });
+  // if the targets need more time than there is, recommend dropping the weakest first
+  let capNote = null;
+  if(avail != null){
+    const order = rows.filter(r => r.rec === "target" && r.status !== "passed" && (r.v === "hard" || r.v === "work")).sort((a, b) => a.acc - b.acc);
+    let need = rows.filter(r => r.rec === "target" && r.status !== "passed").reduce((a, r) => a + r.need, 0);
+    while(need > avail && order.length){ const r = order.shift(); r.rec = "skip"; r.capped = true; need -= r.need; }
+    capNote = {avail, need};
+  }
+  rows.forEach(r => {
+    const parts = [];
+    if(r.v === "unknown") parts.push("まだ正答率がありません。まず過去問.comを1回分解いて実力を測りましょう。");
+    else {
+      const p = Math.round(r.acc * 100);
+      if(r.v === "stable") parts.push("直近の正答率" + p + "%。合格ラインに余裕があるので、短時間の復習で維持できます。");
+      if(r.v === "near") parts.push("直近の正答率" + p + "%。もう一押しで安全圏です。一番伸ばしやすい科目なので優先します。");
+      if(r.v === "work") parts.push("直近の正答率" + p + "%。合格ラインまであと" + (60 - p) + "ポイント。" + (r.rec === "skip" ? "試験まで時間が少ないので、今回は見送りも選択肢です。" : "過去問中心でまとまった時間を取りましょう。"));
+      if(r.v === "hard") parts.push("直近の正答率" + p + "%。" + (r.rec === "skip" ? "今回は見送り、次回に回すのが現実的です。" : "時間はかかりますが、試験まで日数があるので狙えます。"));
+    }
+    if(r.partly) parts.push("片方の科目しか測れていません。もう一方も過去問で確認してください。");
+    if(r.g.pair) parts.push("この2科目は同じ回で両方6割以上取らないと合格になりません。");
+    if(r.capped) parts.push("試験までの学習時間に対して狙う科目が多いので、見送りをおすすめしています。");
+    if(TREND[r.g.ids[0]]) parts.push(TREND[r.g.ids[0]]);
+    r.reason = parts.join("");
+  });
+  return {rows, d, avail, capNote};
+}
+function setGroupStatus(ids, st){
+  settings.subjStatus = settings.subjStatus || {};
+  ids.forEach(id => settings.subjStatus[id] = st);
+  settings.pinned = settings.pinned.filter(id => statusOf(id) === "target");
+  saveSettings(); bump(); dirty = sent.some(s => s.kind === "rem" && s.at > Date.now());
+}
+function renderStrategy(){
+  const S = strategy(), box = $("stratList");
+  $("stratExam").innerHTML = S.d == null ? '試験日が未設定です。<button class="btn small dark" type="button" data-goto2="settings">試験日を入れる</button>' :
+    "次の試験まで <b class=\"num\">" + S.d + "日</b>";
+  const tg = S.rows.filter(r => r.status === "target");
+  const needT = tg.reduce((a, r) => a + r.need, 0);
+  const nT = tg.reduce((a, r) => a + r.g.ids.length, 0);
+  $("stratSumTarget").textContent = nT ? nT + "科目" : "未選択";
+  $("stratSumNeed").textContent = needT + "時間";
+  $("stratSumAvail").textContent = S.avail == null ? "試験日を入れると計算" : S.avail + "時間";
+  const judge = $("stratJudge");
+  if(S.avail == null){ judge.hidden = true; }
+  else {
+    judge.hidden = false;
+    judge.className = "status " + (needT <= S.avail ? "ok" : "warn");
+    judge.textContent = needT <= S.avail ? "今の「狙う」科目なら、試験までの時間に収まる見込みです。" :
+      "狙う科目に必要な時間（目安" + needT + "時間）が、学習できる時間（約" + S.avail + "時間）を超えています。「おすすめを反映」か、学習時間帯を増やすことを検討してください。";
+  }
+  box.innerHTML = "";
+  S.rows.forEach(r => {
+    const el = document.createElement("div"); el.className = "strat" + (r.status === "passed" ? " passed" : "");
+    const accTxt = r.g.ids.map((id, k) => (r.g.ids.length > 1 ? subjById[id].name + " " : "") + (r.ra[k].acc == null ? "未測定" : Math.round(r.ra[k].acc * 100) + "%（直近" + r.ra[k].total + "問）")).join("／");
+    const recTxt = r.status === "passed" ? "" : r.rec === r.status ? "" : '<span class="rec-hint">おすすめ：' + (r.rec === "skip" ? "見送り" : "狙う") + '</span>';
+    el.innerHTML = '<div class="row"><b>' + r.name + '</b><span class="verdict ' + VERDICT[r.v].cls + '">' + VERDICT[r.v].label + '</span></div>' +
+      '<div class="meta num">正答率 ' + accTxt + (r.status === "passed" ? "" : "・安全圏までの目安 " + r.need + "時間") + '</div>' +
+      (r.status === "passed" ? '<p class="reason">合格済み（合格した年を含めて3年間有効）。予定には入りません。</p>' : '<p class="reason">' + r.reason + '</p>') +
+      '<div class="row" style="align-items:center"><div class="seg" role="group" aria-label="' + r.name + 'の扱い">' +
+      [["target","狙う"],["skip","見送り"],["passed","合格済み"]].map(([k, t]) => '<button type="button" data-st="' + k + '" aria-pressed="' + (r.status === k) + '">' + t + '</button>').join("") +
+      '</div>' + recTxt + '</div>';
+    el.querySelectorAll(".seg button").forEach(b => b.onclick = () => { setGroupStatus(r.g.ids, b.dataset.st); renderStrategy(); renderChips(); renderPlan(); renderNow(); });
+    box.append(el);
+  });
+  document.querySelectorAll("[data-goto2]").forEach(b => b.onclick = () => { showView("settings"); setTimeout(() => $("sExam").focus(), 60); });
+}
+$("stratApply").onclick = () => {
+  strategy().rows.forEach(r => { if(r.status !== "passed") setGroupStatus(r.g.ids, r.rec); });
+  renderStrategy(); renderChips(); renderPlan(); renderNow();
+  toast("おすすめを反映しました。今日の提案も更新されています");
+};
+
 /* ---------------- planner ---------------- */
 function unitPattern(style, st, fresh){
-  if(style === "short") return fresh ? ["hoipiyo", "text"] : ["kakocom", "kakotext"];
+  if(style === "short") return fresh && st !== "late" ? ["hoipiyo", "text"] : ["kakocom", "kakotext"];
   if(style === "deep"){
     if(fresh) return ["inputMix", "outputMix"];
     return st === "late" ? ["outputMix", "outputMix"] : ["inputMix", "outputMix"];
   }
-  if(fresh) return st === "late" ? ["hoipiyo", "kakocom", "text", "kakocom"] : ["hoipiyo", "text", "kakocom", "kakotext"];
+  if(fresh) return st === "late" ? ["kakocom", "hoipiyo", "text", "kakocom"] : ["hoipiyo", "text", "kakocom", "kakotext"];
   if(st === "early") return ["hoipiyo", "text", "kakocom", "kakotext"];
   if(st === "mid") return ["text", "kakocom", "kakotext", "kakocom"];
   return ["kakocom", "kakotext", "kakocom", "kakotext"];
@@ -493,22 +672,31 @@ function pickStyle(avail){
   if(avail <= 180) return "pomo";
   return "deep";
 }
+const windowsMs = () => windows.filter(w => w && w[0] && w[1]).map(w => [atToday(w[0]), atToday(w[1])]).filter(w => w[1] > w[0]).sort((a, b) => a[0] - b[0]);
 /* Build a plan for the given windows starting no earlier than `from`.
    keep: items already finished (kept when re-planning). */
 function buildPlan(from, keep){
   const st = stage();
-  const order = settings.pinned.length ? settings.pinned.map(id => ({id, reason:"あなたが選んだ科目", fresh:subjectStats()[id].input < 30})) : ranked();
-  const ctx = {study: keep.filter(i => i.kind === "focus").reduce((a, i) => a + i.min, 0), subjIdx:0, warmed:keep.some(i => i.act === "warmup"), capped:false, styles:[], queue:[]};
+  const pinned = settings.pinned.filter(id => activeSubjects().some(s => s.id === id));
+  let order = pinned.length ? pinned.map(id => ({id, reason:"あなたが選んだ科目", fresh:subjectStats()[id].input < 30 && recentAcc(id).acc == null})) : ranked();
+  // subjects already studied today go to the back; an unfinished unit continues where it stopped
+  const usedToday = new Set(keep.filter(i => i.subject).map(i => i.subject));
+  order = order.filter(o => !usedToday.has(o.id)).concat(order.filter(o => usedToday.has(o.id)));
+  const lastF = keep.slice().reverse().find(i => i.rest);
+  const ctx = {study: keep.filter(i => i.kind === "focus").reduce((a, i) => a + i.min, 0), subjIdx:0, warmed:keep.some(i => i.act === "warmup"), capped:false, styles:[], queue:lastF ? lastF.rest.map(x => Object.assign({}, x)) : []};
+  // an interrupted block that was mostly not done is offered again first
+  const lastCut = keep.slice().reverse().find(i => i.kind === "focus");
+  if(lastCut && lastCut.cut && lastCut.subject && lastCut.min < lastCut.planned * 0.6) ctx.queue.unshift({act:lastCut.act, subject:lastCut.subject});
   const items = keep.slice();
+  if(!order.length) return {items, ctx, stage:st};   // every subject is marked 合格済み
   let blockNo = keep.filter(i => i.kind === "focus" && i.act !== "warmup").length;
-  const ws = windows.filter(w => w && w[0] && w[1]).map(w => [atToday(w[0]), atToday(w[1])]).filter(w => w[1] > w[0]).sort((a, b) => a[0] - b[0]);
-  ws.forEach((w, wi) => {
+  windowsMs().forEach(w => {
     let t = Math.max(w[0], from), end = w[1];
     const avail = Math.floor((end - t) / MIN);
     if(avail < 15 || ctx.capped) return;
     const styleKey = pickStyle(avail), S = STYLES[styleKey];
     ctx.styles.push(styleKey);
-    const winId = "w" + wi;
+    const winId = "w" + w[0];
     const add = (o, min) => { items.push(Object.assign({uid:uid(), win:winId, start:t, end:t + min * MIN, min}, o)); t += min * MIN; };
     ctx.queue = convertQueue(ctx.queue, styleKey);
     const nextAct = () => {
@@ -516,7 +704,8 @@ function buildPlan(from, keep){
         const s = order[ctx.subjIdx % order.length]; ctx.subjIdx++;
         ctx.queue = unitPattern(styleKey, st, s.fresh).map(a => ({act:a, subject:s.id}));
       }
-      return ctx.queue.shift();
+      const a = ctx.queue.shift();
+      return Object.assign({}, a, {rest:ctx.queue.map(x => Object.assign({}, x))});
     };
     if(!ctx.warmed && avail >= 45){ const wm = styleKey === "deep" ? 10 : 5; add({kind:"focus", act:"warmup", subject:null}, wm); ctx.warmed = true; ctx.study += wm; }
     if(styleKey === "short" && avail < 45){
@@ -575,109 +764,173 @@ async function ntfyDelete(sid){
   }
   return false;
 }
-/* Cancels every booked notification still in the future. Throws if some could not be cancelled
-   (they stay in `sent` so the next press retries them). */
-async function cancelPending(onProgress, keepSids){
-  const now = Date.now(), pending = sent.filter(s => s.at > now && !(keepSids && keepSids.has(s.sid))), failed = [];
+/* Cancels booked notifications matching `pred` that are still in the future. Throws if some could not be
+   cancelled (they stay in `sent` so the next action retries them). */
+async function cancelWhere(pred, onProgress){
+  const now = Date.now(), pending = sent.filter(s => s.at > now && pred(s)), failed = [];
   let k = 0;
   for(const s of pending){
     if(!(await ntfyDelete(s.sid))) failed.push(s);
     onProgress && onProgress(++k, pending.length);
   }
-  sent = failed; saveSent();
+  sent = sent.filter(s => s.at > now && !pending.includes(s)).concat(failed); saveSent();
   if(failed.length) throw new Error(failed.length + "件の通知を取り消せませんでした");
 }
+// every message gets its own sequence id, so a new booking never collides with an earlier notification
+async function postAll(msgs, kind, onProgress){
+  const list = msgs.filter(m => m.at > Date.now() + 12000).sort((a, b) => a.at - b.at);
+  let k = 0;
+  for(const m of list){
+    const sid = kind + "-" + uid() + uid();
+    await ntfyPost({title:m.title, message:m.message, tags:m.tags, priority:m.priority || 4, delay:String(Math.floor(m.at / 1000)), sequence_id:sid, click:appUrl()});
+    sent.push({sid, at:m.at, kind}); saveSent();
+    onProgress && onProgress(++k, list.length);
+  }
+  return list;
+}
 const appUrl = () => location.href.split("#")[0];
-function buildMessages(p){
-  const msgs = [], items = p.items, focusTotal = p.focusTotal;
-  const byWin = {};
-  items.forEach(i => (byWin[i.win] = byWin[i.win] || []).push(i));
-  Object.values(byWin).forEach(list => {
-    const first = list[0], last = list[list.length - 1];
-    if(settings.pre) msgs.push({at:first.start - 5 * MIN, title:"あと5分で学習開始", tags:["alarm_clock"], priority:4,
-      message:hhmm(first.start) + "から " + titleOf(first) + "（" + subjName(first.subject, first.act) + "）。机の準備をしましょう。"});
-    list.forEach((it, k) => {
+const titleOf = it => it.kind === "break" ? "休憩" : ACT[it.act].title;
+const focusLabel = (it, total) => it.act === "warmup" ? "ウォームアップ" : it.act === "matome" ? "まとめ" : "集中 " + it.n + "/" + total;
+const whatOf = it => titleOf(it) + "（" + subjName(it.subject, it.act) + "）";
+
+/* Reminders for a window that has not been started: 5 min before, at the start, and 10 min later. */
+function reminderMsgs(list){
+  const first = list[0], last = list[list.length - 1], range = hhmm(first.start) + "〜" + hhmm(last.end);
+  const m = [];
+  if(settings.pre) m.push({at:first.start - 5 * MIN, title:"あと5分で学習の時間", tags:["alarm_clock"], message:range + " の学習です。最初は " + whatOf(first) + "。机の準備をしましょう。"});
+  m.push({at:first.start, title:"学習の時間です（" + range + "）", tags:["books"], message:"アプリを開いて「開始」を押すとタイマーが始まります。最初は " + whatOf(first) + "。"});
+  m.push({at:first.start + 10 * MIN, title:"まだ始めていませんか？", tags:["hourglass"], message:"「開始」を押した時刻から " + hhmm(last.end) + " までの時間割を組み直します。"});
+  return m;
+}
+/* Notifications for a window that was just started. In "manual" mode the chain stops at the first break end. */
+function chainMsgs(list, now, total){
+  const m = [];
+  for(let k = 0; k < list.length; k++){
+    const it = list[k], prev = list[k - 1], next = list[k + 1];
+    if(it.start > now + 10000){
       if(it.kind === "break"){
-        const prev = list[k - 1], next = list[k + 1];
-        let msg = hhmm(it.end) + "から " + (next ? titleOf(next) + "（" + subjName(next.subject, next.act) + "）" : "");
+        let msg = next ? hhmm(it.end) + "から " + whatOf(next) : "";
         if(prev && ACT[prev.act] && ACT[prev.act].score) msg += "\n過去問の正解数をアプリに記録しておきましょう。";
-        msgs.push({at:it.start, title:(it.long ? "長い休憩 " : "休憩 ") + it.min + "分", tags:["coffee"], priority:4, message:msg + "\n" + it.tip});
+        if(settings.manualEach) msg += "\n休憩が終わったら通知します。";
+        m.push({at:it.start, title:(it.long ? "長い休憩 " : "休憩 ") + it.min + "分", tags:["coffee"], message:msg + "\n" + it.tip});
       } else {
-        const label = it.act === "warmup" ? "ウォームアップ" : it.act === "matome" ? "まとめ" : "集中 " + it.n + "/" + focusTotal;
-        msgs.push({at:it.start, title:label + "｜" + ACT[it.act].title, tags:["books"], priority:4,
+        m.push({at:it.start, title:focusLabel(it, total) + "｜" + ACT[it.act].title, tags:["books"],
           message:subjName(it.subject, it.act) + "　" + hhmm(it.start) + "〜" + hhmm(it.end) + "（" + it.min + "分）\n" + ACT[it.act].tip});
       }
-    });
-    const lastWin = list === Object.values(byWin).slice(-1)[0];
-    msgs.push({at:last.end, title:lastWin ? "今日の学習おわり" : "この時間帯の学習おわり", tags:["tada"], priority:3,
-      message:lastWin ? "お疲れさまでした。過去問の結果をアプリに記録して、今日はゆっくり休みましょう。" : "お疲れさまでした。次の時間帯にまた通知します。"});
-  });
-  return msgs.map((m, i) => Object.assign(m, {sid:p.day.replace(/-/g, "") + "-" + i}));
+    }
+    if(settings.manualEach && it.kind === "break" && next){
+      m.push({at:it.end, title:"休憩おわり", tags:["bell"], message:"アプリを開いて「開始」を押すと " + whatOf(next) + " が始まります。"});
+      m.push({at:it.end + 5 * MIN, title:"まだ再開していません", tags:["hourglass"], message:"「開始」を押すと、そこから残りの時間割を組み直します。"});
+      return {msgs:m, holdAt:it.end};
+    }
+  }
+  m.push({at:list[list.length - 1].end, title:"この時間帯の学習おわり", tags:["tada"], priority:3, message:"お疲れさまでした。過去問の結果をアプリに記録しておきましょう。"});
+  return {msgs:m, holdAt:null};
 }
-const titleOf = it => it.kind === "break" ? "休憩" : ACT[it.act].title;
 
-async function schedule(){
-  const btn = $("btnSchedule");
-  btn.disabled = true;
-  setStatus("schedStatus", "通知を予約しています…", "");
+const emptyPlan = () => ({day:dayKey(new Date()), items:[], logged:[], scored:[], run:null, closed:false});
+const busy = on => ["btnStart", "btnPause", "btnSchedule", "btnCancel"].forEach(id => $(id).disabled = on);
+const waitMsg = sec => setStatus("schedStatus", "送信が混み合っているので" + sec + "秒待っています…（このまま開いておいてください）", "warn");
+
+/* 開始: build the current window's timetable from this moment and book its notifications. */
+async function startNow(){
+  unlockAudio();
+  const now = Date.now(), ws = windowsMs();
+  let w = ws.find(x => x[0] <= now && now < x[1] - 10 * MIN);
+  if(!w){
+    const nx = ws.find(x => x[0] > now);
+    if(nx && nx[0] - now <= 90 * MIN){   // starting early: move this window's start to now
+      const i = windows.findIndex(x => x && x[0] && x[1] && atToday(x[0]) === nx[0] && atToday(x[1]) === nx[1]);
+      windows[i][0] = hhmm(now); saveWindows(); renderWindows();
+      w = [atToday(windows[i][0]), nx[1]];
+    } else { toast("今から学習できる時間帯がありません。下で時間帯を追加してください"); return; }
+  }
+  const done = plan.items.filter(i => i.end <= now);
+  const built = buildPlan(now, done);
+  const winId = "w" + w[0];
+  let list = built.items.filter(i => !done.includes(i) && i.win === winId);
+  if(!list.length){ toast("この時間帯の残りが短すぎます（15分未満）"); return; }
+  const total = built.items.filter(i => i.kind === "focus" && i.n).length;
+  const chain = chainMsgs(list, now, total);
+  if(chain.holdAt) list = list.filter(i => i.start < chain.holdAt);
+  plan = Object.assign(plan, {items:done.concat(list), run:{win:winId}, closed:false});
+  savePlan(); bump(); renderAll();
+  busy(true); onWait = waitMsg;
+  setStatus("schedStatus", "スタートしました。通知を予約しています…", "");
+  try{
+    await cancelWhere(s => !s.kind || s.kind === "chain" || (s.kind === "rem" && s.at <= w[1] + 10 * MIN));
+    const posted = await postAll(chain.msgs, "chain", (k, n) => setStatus("schedStatus", "スタートしました。通知を予約しています… " + k + "/" + n, ""));
+    setStatus("schedStatus", "スタートしました。" + (posted[0] ? "次の通知は " + hhmm(posted[0].at) + "「" + posted[0].title + "」。" : "") + "画面を閉じても届きます。", "ok");
+  }catch(e){
+    setStatus("schedStatus", "タイマーは動いていますが、通知を予約できませんでした：" + (e.message || e) + "。電波を確認して「中断」→「開始」を押し直してください。", "err");
+  }
+  busy(false); renderAll();
+}
+/* 中断: stop the timer now and cancel this window's remaining notifications. */
+async function pauseNow(){
+  const now = Date.now();
+  plan.items = plan.items.filter(i => i.start < now).map(i => i.end > now ? Object.assign({}, i, {end:now, min:Math.round((now - i.start) / MIN), cut:true, planned:i.min}) : i).filter(i => i.min > 0);
+  plan.run = null; savePlan(); bump(); renderAll();
+  busy(true); onWait = waitMsg;
+  try{
+    await cancelWhere(s => !s.kind || s.kind === "chain", (k, n) => setStatus("schedStatus", "通知を取り消しています… " + k + "/" + n, ""));
+    setStatus("schedStatus", "中断しました。続けるときは「開始」を押すと、残りの時間で組み直します。", "ok");
+  }catch(e){ setStatus("schedStatus", e.message + "。電波を確認して、もう一度「中断」を押してください。", "err"); plan.run = {win:"stale"}; savePlan(); }
+  busy(false); renderAll();
+}
+/* 開始時刻に通知: book reminders for every upcoming window that has not been started. */
+async function bookReminders(){
+  busy(true); onWait = waitMsg;
+  setStatus("schedStatus", "開始時刻の通知を予約しています…", "");
   try{
     const now = Date.now();
-    const keep = plan ? plan.items.filter(i => i.end <= now).concat(plan.items.filter(i => i.start < now && i.end > now).map(i => Object.assign({}, i, {end:now, min:Math.round((now - i.start) / MIN), cut:true}))) : [];
-    const from = Math.ceil((now + MIN) / MIN) * MIN;
-    const built = buildPlan(from, keep.filter(i => i.min > 0));
-    const newPlan = {id:"p" + uid(), day:dayKey(new Date()), items:built.items, logged:plan ? plan.logged : [], scored:plan ? plan.scored : []};
-    if(!newPlan.items.some(i => i.start >= now)) throw new Error("今からの学習時間がありません。時間帯を見直してください");
-    const focusTotal = newPlan.items.filter(i => i.kind === "focus" && i.n).length;
-    const future = buildMessages({day:newPlan.day, focusTotal, items:newPlan.items.filter(i => i.start >= now)}).filter(m => m.at > Date.now() + 15000);
-    onWait = sec => setStatus("schedStatus", "送信が混み合っているので" + sec + "秒待っています…（このまま開いておいてください）", "warn");
-    let done = 0;
-    // publishing with the same sequence id replaces a booked message, so only leftovers need deleting
-    for(const m of future){
-      await ntfyPost({title:m.title, message:m.message, tags:m.tags, priority:m.priority, delay:String(Math.floor(m.at / 1000)), sequence_id:m.sid, click:appUrl()});
-      sent = sent.filter(x => x.sid !== m.sid).concat({sid:m.sid, at:m.at}); saveSent(); done++;
-      setStatus("schedStatus", "通知を予約しています… " + done + "/" + future.length, "");
-    }
-    await cancelPending((k, n) => setStatus("schedStatus", "不要になった通知を取り消しています… " + k + "/" + n, ""), new Set(future.map(m => m.sid)));
-    plan = newPlan; dirty = false; savePlan(); saveWindows();
-    setStatus("schedStatus", done + "件の通知を予約しました。最初の通知は " + (future[0] ? hhmm(future[0].at) : "-") + "。アプリを閉じても届きます。", "ok");
+    plan.closed = false;
+    const groups = {};
+    previewItems(true).filter(i => !plan.items.includes(i) && i.start > now + 60000).forEach(i => (groups[i.win] = groups[i.win] || []).push(i));
+    const lists = Object.values(groups);
+    if(!lists.length) throw new Error("これから始まる時間帯がありません。今すぐ始めるなら上の「開始」を押してください");
+    const msgs = lists.flatMap(reminderMsgs);
+    await cancelWhere(s => !s.kind || s.kind === "rem");
+    const posted = await postAll(msgs, "rem", (k, n) => setStatus("schedStatus", "開始時刻の通知を予約しています… " + k + "/" + n, ""));
+    dirty = false; savePlan(); saveWindows();
+    setStatus("schedStatus", lists.map(l => hhmm(l[0].start)).join("・") + " の開始時刻に通知します（最初は " + hhmm(posted[0].at) + "）。時間になったら通知からアプリを開いて「開始」を押してください。", "ok");
   }catch(e){
-    setStatus("schedStatus", "予約できませんでした：" + (e.message || e) + "。電波を確認してもう一度押してください。", "err");
+    setStatus("schedStatus", "予約できませんでした：" + (e.message || e), "err");
   }
-  btn.disabled = false;
-  renderAll();
+  busy(false); renderAll();
 }
+/* 今日はここまで: cancel everything that is still booked for today. */
 async function stopToday(){
-  $("btnCancel").disabled = true;
-  onWait = sec => setStatus("schedStatus", "送信が混み合っているので" + sec + "秒待っています…", "warn");
-  try{ await cancelPending((k, n) => setStatus("schedStatus", "通知を取り消しています… " + k + "/" + n, "")); }
-  catch(e){ $("btnCancel").disabled = false; setStatus("schedStatus", e.message + "。電波を確認して、もう一度「今日はここまで」を押してください。", "err"); return; }
-  if(plan){
-    const now = Date.now();
-    plan.items = plan.items.filter(i => i.start < now).map(i => i.end > now ? Object.assign({}, i, {end:now, min:Math.max(0, Math.round((now - i.start) / MIN)), cut:true}) : i).filter(i => i.min > 0);
-    savePlan();
-  }
-  $("btnCancel").disabled = false;
-  setStatus("schedStatus", "残りの通知を取り消しました。", "ok");
-  renderAll();
+  const now = Date.now();
+  if(plan.run){ plan.items = plan.items.filter(i => i.start < now).map(i => i.end > now ? Object.assign({}, i, {end:now, min:Math.round((now - i.start) / MIN), cut:true, planned:i.min}) : i).filter(i => i.min > 0); }
+  plan.run = null; plan.closed = true; savePlan(); bump(); renderAll();
+  busy(true); onWait = waitMsg;
+  try{
+    await cancelWhere(() => true, (k, n) => setStatus("schedStatus", "通知を取り消しています… " + k + "/" + n, ""));
+    setStatus("schedStatus", "今日の残りの通知をすべて取り消しました。お疲れさまでした。", "ok");
+  }catch(e){ setStatus("schedStatus", e.message + "。電波を確認して、もう一度「今日はここまで」を押してください。", "err"); }
+  busy(false); renderAll();
 }
 
 /* ---------------- logging ---------------- */
 function addLog(entry){
   logs.push(Object.assign({id:"log-" + Date.now() + "-" + uid(), ts:Date.now(), day:dayKey(new Date())}, entry));
-  ls.set("hr2.logs", logs);
+  ls.set("hr2.logs", logs); bump();
 }
 let scoreQueue = [];
 function processCompletions(){
-  if(!plan) return;
   const now = Date.now(); let changed = false;
   plan.items.forEach(i => {
     if(i.kind !== "focus" || i.end > now || plan.logged.includes(i.uid)) return;
     plan.logged.push(i.uid); changed = true;
     if(i.min >= 1) addLog({type:"study", act:i.act, subject:i.subject, minutes:i.min});
-    if(ACT[i.act].score && i.subject && !plan.scored.includes(i.uid)) scoreQueue.push(i);
   });
-  // also queue unscored output blocks from earlier this session (e.g. after reload)
   plan.items.forEach(i => { if(i.kind === "focus" && i.end <= now && ACT[i.act].score && i.subject && !plan.scored.includes(i.uid) && !scoreQueue.includes(i)) scoreQueue.push(i); });
+  // the started window is over (or reached a break end in manual mode)
+  if(plan.run && plan.run.win !== "stale"){
+    const mine = plan.items.filter(i => i.win === plan.run.win);
+    if(!mine.length || now >= mine[mine.length - 1].end){ plan.run = null; changed = true; bump(); }
+  }
   if(changed) savePlan();
   renderScore();
 }
@@ -709,59 +962,70 @@ $("scoreSkip").onclick = () => closeScore(false);
 /* ---------------- render: now card ---------------- */
 const CIRC = 2 * Math.PI * 108;
 let lastPhaseUid = null, actx = null;
+function unlockAudio(){ try{ if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); }catch(e){} }
 function chime(kind){
-  if(!settings.sound) return;
+  if(!settings.sound || !actx) return;
   try{
-    if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
     const seq = kind === "break" ? [784, 659, 523] : [523, 659, 784], t0 = actx.currentTime;
     seq.forEach((f, i) => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = f; const t = t0 + i * .22;
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.3, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .9);
       o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 1); });
   }catch(e){}
 }
-document.addEventListener("pointerdown", () => { try{ if(settings.sound && !actx) actx = new (window.AudioContext || window.webkitAudioContext)(); actx && actx.resume(); }catch(e){} }, {once:true});
+document.addEventListener("pointerdown", () => { if(settings.sound) unlockAudio(); }, {once:true});
 
 function renderNow(){
   const card = $("now"), now = Date.now();
-  const items = plan ? plan.items : [];
-  const cur = items.find(i => i.start <= now && now < i.end);
-  const next = items.find(i => i.start > now);
-  const focusTotal = items.filter(i => i.kind === "focus" && i.n).length;
-  let kind, pill, clock, sub, title, subject, tip = null, link = null, frac = 0;
+  const v = previewItems(), items = plan.items;
+  const total = v.filter(i => i.kind === "focus" && i.n).length;
+  const cur = plan.run ? items.find(i => i.start <= now && now < i.end) : null;
+  const next = plan.closed ? null : v.find(i => !items.includes(i) && i.end > now);
+  let kind, pill, clock, sub, title, subject, tip = null, link = null, frac = 0, startLabel = null;
   if(cur){
     kind = cur.kind;
     if(cur.uid !== lastPhaseUid){ if(lastPhaseUid) chime(cur.kind); lastPhaseUid = cur.uid; }
     clock = fmtLeft(cur.end - now); sub = hhmm(cur.end) + " まで"; frac = (now - cur.start) / (cur.end - cur.start);
     if(cur.kind === "break"){
       pill = cur.long ? "長い休憩" : "休憩"; title = cur.long ? "しっかり休憩" : "ひと休み";
-      const nx = items[items.indexOf(cur) + 1];
-      subject = nx ? "次は " + titleOf(nx) + "（" + subjName(nx.subject, nx.act) + "）" : ""; tip = cur.tip;
+      const nx = items[items.indexOf(cur) + 1] || next;
+      subject = nx ? "次は " + whatOf(nx) + (settings.manualEach ? "（「開始」で再開）" : "") : ""; tip = cur.tip;
     } else {
-      pill = cur.act === "warmup" ? "ウォームアップ" : cur.act === "matome" ? "まとめ" : "集中 " + cur.n + "/" + focusTotal + "・" + ACT[cur.act].tag;
+      pill = focusLabel(cur, total) + (cur.n ? "・" + ACT[cur.act].tag : "");
       title = ACT[cur.act].title; subject = subjName(cur.subject, cur.act); tip = ACT[cur.act].tip;
       link = ACT[cur.act].link && cur.subject ? ACT[cur.act].link(subjName(cur.subject, cur.act)) : null;
     }
+  } else if(next && next.start - now <= 60000){
+    const last = items[items.length - 1], afterBreak = last && last.kind === "break" && now - last.end < 30 * MIN;
+    kind = "ready"; pill = afterBreak ? "休憩おわり" : "学習の時間です"; startLabel = afterBreak ? "再開する" : "開始";
+    clock = pad(next.min) + ":00"; sub = "押すとスタート";
+    title = titleOf(next); subject = subjName(next.subject, next.act); tip = next.kind === "focus" ? ACT[next.act].tip : null;
   } else if(next){
-    kind = "wait"; pill = "次の学習まで"; clock = fmtLeft(next.start - now); sub = hhmm(next.start) + " 開始";
-    title = titleOf(next); subject = subjName(next.subject, next.act) + "　通知でお知らせします";
-    const prevEnd = items.filter(i => i.end <= now).map(i => i.end).pop() || (now - 1);
-    frac = Math.max(0, Math.min(1, (now - prevEnd) / (next.start - prevEnd)));
-  } else if(items.length){
+    kind = "wait"; pill = "次の学習まで"; clock = fmtLeft(next.start - now); sub = hhmm(next.start) + " から";
+    title = titleOf(next); subject = subjName(next.subject, next.act);
+    if(next.start - now <= 90 * MIN) startLabel = "今から始める";
+    const prevEnd = items.length ? items[items.length - 1].end : now - 1;
+    frac = Math.max(0, Math.min(1, (now - prevEnd) / Math.max(1, next.start - prevEnd)));
+  } else if(items.length || plan.closed){
     kind = "done"; pill = "完了"; clock = "おつかれ"; sub = ""; frac = 1;
     title = "今日の学習は終わりました"; subject = "記録タブで今日の成果を確認できます";
   } else {
     kind = "none"; pill = "予定なし"; clock = "--:--"; sub = "";
-    title = "今日の予定を作りましょう"; subject = "下で学習できる時間を入れて「通知を予約」を押します";
+    title = "今日の予定を作りましょう"; subject = "下で学習できる時間を入れてください";
   }
   card.dataset.kind = kind;
   $("pill").textContent = pill; $("clock").textContent = clock; $("clockSub").textContent = sub;
   $("clock").style.fontSize = clock.length > 5 ? "clamp(32px,10vw,44px)" : "";
   $("taskTitle").textContent = title; $("taskSubject").textContent = subject;
   $("tip").hidden = !tip; if(tip) $("tip").textContent = tip;
-  $("links").innerHTML = "";
-  if(link){ const a = document.createElement("a"); a.href = link[1]; a.target = "_blank"; a.rel = "noopener"; a.textContent = link[0] + " ↗"; $("links").append(a); }
+  if($("links").dataset.k !== (link ? link[1] : "")){
+    $("links").dataset.k = link ? link[1] : ""; $("links").innerHTML = "";
+    if(link){ const a = document.createElement("a"); a.href = link[1]; a.target = "_blank"; a.rel = "noopener"; a.textContent = link[0] + " ↗"; $("links").append(a); }
+  }
   $("prog").style.strokeDashoffset = (CIRC * (1 - frac)).toFixed(1);
-  $("btnCancel").hidden = !(plan && next || cur);
+  $("btnStart").hidden = !startLabel; if(startLabel) $("btnStart").textContent = startLabel;
+  $("btnStart").classList.toggle("big", kind === "ready");
+  $("btnPause").hidden = !plan.run;
+  $("btnCancel").hidden = !(plan.run || sent.some(s => s.at > now));
   $("setupNag").hidden = settings.tested;
 }
 
@@ -789,11 +1053,11 @@ $("addWin").onclick = () => {
   windows.push([hhmm(s), hhmm(s + 60 * MIN)]); onEdit(); renderWindows();
 };
 document.querySelectorAll("[data-preset]").forEach(b => b.onclick = () => { windows = PRESETS[b.dataset.preset].map(w => w ? w.slice() : null); renderWindows(); onEdit(); });
-function onEdit(){ dirty = true; saveWindows(); renderPlan(); if(plan && plan.items.some(i => i.start > Date.now())) setStatus("schedStatus", "時間帯や科目を変えました。「通知を予約し直す」で反映されます。", "warn"); }
+function onEdit(){ dirty = true; bump(); saveWindows(); renderPlan(); renderNow(); if(sent.some(s => s.kind === "rem" && s.at > Date.now())) setStatus("schedStatus", "時間帯や科目を変えました。「開始時刻の通知を予約し直す」で反映されます。", "warn"); }
 
 function renderChips(){
   const box = $("subjectChips"); box.innerHTML = "";
-  SUBJECTS.forEach(s => {
+  activeSubjects().forEach(s => {
     const b = document.createElement("button"); b.type = "button"; b.className = "chip";
     const idx = settings.pinned.indexOf(s.id);
     b.setAttribute("aria-pressed", idx >= 0);
@@ -805,32 +1069,43 @@ function renderChips(){
 
 /* ---------------- render: plan ---------------- */
 let dirty = false;   // windows/subjects/settings changed since the last booking
-function currentPlanView(){
-  const now = Date.now();
-  if(plan && !dirty) return {items:plan.items, scheduled:true, stage:stage(), ctx:null};
-  const keep = plan ? plan.items.filter(i => i.end <= now) : [];
-  const b = buildPlan(Math.ceil((now + MIN) / MIN) * MIN, keep);
-  return {items:b.items, scheduled:false, stage:b.stage, ctx:b.ctx};
+let ver = 0, previewCache = null;
+function bump(){ ver++; previewCache = null; }
+/* Today's timetable: what really happened (plan.items) followed by the proposal for the rest of the day. */
+function currentPlanView(force){
+  const now = Date.now(), key = Math.floor(now / MIN) + "|" + ver;
+  if(!force && previewCache && previewCache.key === key) return previewCache.v;
+  let b;
+  if(plan.closed) b = {items:plan.items.slice(), ctx:{styles:[], capped:false}, stage:stage()};
+  else if(plan.run){
+    const mine = plan.items.filter(i => i.win === plan.run.win), runEnd = mine.length ? mine[mine.length - 1].end : now;
+    b = buildPlan(Math.max(runEnd, now), plan.items);
+  } else b = buildPlan(Math.ceil(now / MIN) * MIN, plan.items.filter(i => i.end <= now));
+  const v = {items:b.items, stage:b.stage, ctx:b.ctx};
+  previewCache = {key, v};
+  return v;
 }
+const previewItems = force => currentPlanView(force).items;
 function renderPlan(){
   const v = currentPlanView(), now = Date.now();
   const focusMin = v.items.filter(i => i.kind === "focus").reduce((a, i) => a + i.min, 0);
   const breakMin = v.items.filter(i => i.kind === "break").reduce((a, i) => a + i.min, 0);
   $("sumStudy").textContent = hm(focusMin); $("sumBreak").textContent = hm(breakMin);
   $("sumBlocks").textContent = v.items.filter(i => i.kind === "focus" && i.n).length;
-  $("planHeading").textContent = v.scheduled ? "今日の予定" : "今日の提案";
-  $("planBadge").textContent = v.scheduled ? "通知予約済み" : "まだ予約していません";
-  $("btnSchedule").textContent = plan && plan.items.some(i => i.start > now) ? "通知を予約し直す" : (plan ? "今から組み直して予約" : "この予定で通知を予約");
+  const hasRem = sent.some(s => s.kind === "rem" && s.at > now);
+  $("planHeading").textContent = plan.run ? "今日の時間割" : "今日の提案";
+  $("planBadge").textContent = plan.run ? "学習中" : hasRem ? (dirty ? "変更あり・予約し直してください" : "開始通知 予約済み") : "開始通知 未予約";
+  $("btnSchedule").textContent = hasRem ? "開始時刻の通知を予約し直す" : "開始時刻に通知を予約";
 
   // reasons
   const why = [];
-  const ctx = v.ctx || buildPlan(Math.ceil((now + MIN) / MIN) * MIN, plan ? plan.items.filter(i => i.end <= now) : []).ctx;
+  const ctx = v.ctx;
   const styles = [...new Set(ctx.styles)];
   if(styles.length) why.push("組み方：" + styles.map(s => ({short:"1時間未満の時間帯は20〜30分の短時間集中", pomo:"1〜3時間の時間帯は25分集中＋5分休憩", deep:"3時間以上の時間帯は50分集中＋10分休憩"})[s]).join("、"));
   why.push("時期：" + STAGE_LABEL[v.stage] + (daysToExam() != null ? "（試験まで" + daysToExam() + "日）" : "（試験日を設定すると時期に合わせて配分します）"));
   const subs = [...new Set(v.items.filter(i => i.subject && i.start >= now).map(i => i.subject))];
   if(subs.length){
-    const rk = Object.fromEntries((settings.pinned.length ? [] : ranked()).map(r => [r.id, r.reason]));
+    const rk = Object.fromEntries(ranked().map(r => [r.id, r.reason]));
     why.push("科目：" + subs.map(id => subjName(id) + (rk[id] ? "（" + rk[id] + "）" : "")).join("、"));
   }
   if(ctx.capped) why.push("1日の上限6時間に達したので、それ以降は入れていません。");
@@ -850,7 +1125,7 @@ function renderPlan(){
     }
     const li = document.createElement("li");
     const cls = it.kind === "break" ? "b" : (it.act === "warmup" || it.act === "matome") ? "r" : "";
-    li.className = cls + (it.end <= now ? " done" : "") + (it.start <= now && now < it.end ? " cur" : "");
+    li.className = cls + (it.end <= now ? " done" : "") + (plan.run && it.start <= now && now < it.end ? " cur" : "");
     const what = it.kind === "break" ? (it.long ? "長い休憩" : "休憩") : ACT[it.act].title;
     const sub = it.kind === "break" ? "" : "<small>" + subjName(it.subject, it.act) + "・" + ACT[it.act].tag + (it.n ? "・" + it.n + "/" + focusTotal : "") + "</small>";
     li.innerHTML = '<span class="t num">' + hhmm(it.start) + '</span><span class="dot"></span><span class="what">' + what + sub + '</span><span class="m num">' + it.min + '分</span>';
@@ -909,16 +1184,16 @@ function paceText(){
 /* ---------------- settings ---------------- */
 function fillSettings(){
   $("topic").textContent = settings.topic;
-  $("sPre").checked = settings.pre; $("sSound").checked = settings.sound;
+  $("sPre").checked = settings.pre; $("sSound").checked = settings.sound; $("sManual").checked = settings.manualEach;
   $("sExam").value = settings.exam; $("sTarget").value = settings.target; $("sPrior").value = settings.prior; $("sStyle").value = settings.style;
 }
 const clampInt = (v, lo, hi, d) => { const n = parseInt(v); return isNaN(n) ? d : Math.min(hi, Math.max(lo, n)); };
 document.querySelectorAll("#view-settings input, #view-settings select").forEach(el => el.addEventListener("change", () => {
-  settings.pre = $("sPre").checked; settings.sound = $("sSound").checked; settings.exam = $("sExam").value;
+  settings.pre = $("sPre").checked; settings.sound = $("sSound").checked; settings.manualEach = $("sManual").checked; settings.exam = $("sExam").value;
   settings.target = clampInt($("sTarget").value, 50, 2000, 400); settings.prior = clampInt($("sPrior").value, 0, 2000, 0);
   settings.style = $("sStyle").value;
-  saveSettings(); renderAll();
-  if(plan && plan.items.some(i => i.start > Date.now()) && (el.id === "sExam" || el.id === "sStyle" || el.id === "sPre")){ dirty = true; setStatus("schedStatus", "設定を変えました。今日の予定に反映するには「通知を予約し直す」を押してください。", "warn"); }
+  saveSettings(); bump(); renderAll();
+  if(sent.some(s => s.kind === "rem" && s.at > Date.now()) && (el.id === "sExam" || el.id === "sStyle" || el.id === "sPre")){ dirty = true; setStatus("schedStatus", "設定を変えました。反映するには今日タブの「開始時刻の通知を予約し直す」を押してください。", "warn"); }
 }));
 $("copyTopic").onclick = async () => {
   try{ await navigator.clipboard.writeText(settings.topic); toast("コピーしました。ntfy に貼り付けてください"); }
@@ -935,6 +1210,16 @@ $("testNotify").onclick = async () => {
   }catch(e){ setStatus("testStatus", "送信できませんでした：" + e.message, "err"); }
   $("testNotify").disabled = false; renderNow();
 };
+$("testDelayed").onclick = async () => {
+  $("testDelayed").disabled = true;
+  onWait = sec => setStatus("testStatus", "混み合っているので" + sec + "秒待っています…", "warn");
+  try{
+    const at = Date.now() + 60000;
+    await ntfyPost({title:"予約通知のテスト", message:hhmm(at) + " に届く予定の通知です。これが届けば、学習の開始・休憩の通知も届きます。", tags:["alarm_clock"], priority:4, delay:String(Math.floor(at / 1000)), click:appUrl()});
+    setStatus("testStatus", hhmm(at) + " ごろに届く予定です。iPhoneをロックして待ってみてください。届かなければ、ntfyアプリでトピックを一度削除して登録し直してください。", "ok");
+  }catch(e){ setStatus("testStatus", "送信できませんでした：" + e.message, "err"); }
+  $("testDelayed").disabled = false;
+};
 function renderCountdown(){
   const d = daysToExam(), el = $("countdown");
   el.innerHTML = d == null ? "試験日を設定" : d > 0 ? '試験まで<b class="num">' + d + '</b>日' : d === 0 ? "今日が試験日" : "試験日を更新";
@@ -944,23 +1229,28 @@ $("countdown").onclick = () => { showView("settings"); setTimeout(() => $("sExam
 /* ---------------- shell ---------------- */
 function setStatus(id, msg, kind){ const el = $(id); el.hidden = !msg; el.textContent = msg; el.className = "status" + (kind ? " " + kind : ""); }
 function showView(v){
-  ["today","stats","settings"].forEach(n => $("view-" + n).hidden = n !== v);
+  ["today","strategy","stats","settings"].forEach(n => $("view-" + n).hidden = n !== v);
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.view === v));
   if(v === "stats") renderStats();
+  if(v === "strategy") renderStrategy();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => showView(b.dataset.view));
 document.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => showView(b.dataset.goto));
 let toastT;
 function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
-$("btnSchedule").onclick = schedule;
+$("btnSchedule").onclick = bookReminders;
 $("btnCancel").onclick = stopToday;
+$("btnStart").onclick = startNow;
+$("btnPause").onclick = pauseNow;
 
-function renderAll(){ renderCountdown(); renderWindows(); renderChips(); processCompletions(); renderNow(); renderPlan(); renderStats(); }
+function renderAll(){ renderCountdown(); renderWindows(); renderChips(); processCompletions(); renderNow(); renderPlan(); renderStats(); if(!$("view-strategy").hidden) renderStrategy(); }
 fillSettings(); renderAll();
 setInterval(() => { renderNow(); processCompletions(); }, 1000);
 setInterval(() => { if(!$("view-today").hidden) renderPlan(); }, 30000);
-document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ if(plan && plan.day !== dayKey(new Date())){ plan = null; savePlan(); } renderAll(); } });
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ if(plan.day !== dayKey(new Date())){ plan = emptyPlan(); savePlan(); bump(); } renderAll(); } });
+// clean up notifications booked by the previous version (whole-day auto booking)
+if(sent.some(s => !s.kind && s.at > Date.now())) cancelWhere(s => !s.kind).catch(() => {});
 })();
 </script>
 </body>
